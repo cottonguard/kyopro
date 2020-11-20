@@ -1,8 +1,8 @@
 use super::*;
 use crate::random::Pcg;
 use fenwick_tree::FenwickTree;
-use sparse_table::SparseTable;
 use lazy_seg_tree::LazySegTree;
+use sparse_table::SparseTable;
 
 #[test]
 fn sparse_table() {
@@ -105,13 +105,21 @@ fn seg_tree_max() {
 fn lazy_seg_tree_range_add_range_max() {
     struct Add(u32);
     impl Monoid for Add {
-        fn id() -> Self { Add(0) }
-        fn op(&self, other: &Self) -> Self { Add(self.0 + other.0) }
+        fn id() -> Self {
+            Add(0)
+        }
+        fn op(&self, other: &Self) -> Self {
+            Add(self.0 + other.0)
+        }
     }
     struct Max(u32);
     impl Monoid for Max {
-        fn id() -> Self { Max(0) }
-        fn op(&self, other: &Self) -> Self { Max(self.0.max(other.0)) }
+        fn id() -> Self {
+            Max(0)
+        }
+        fn op(&self, other: &Self) -> Self {
+            Max(self.0.max(other.0))
+        }
     }
     const N: usize = 20;
     let mut rand = Pcg::new(1818);

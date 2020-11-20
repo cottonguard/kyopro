@@ -43,20 +43,24 @@ impl<R: Read> Input for KInput<R> {
                     return &self.buf[p..p + delim];
                 }
             }
-            if self.pos > 0 {
-                self.buf.copy_within(self.pos..self.len, 0);
-                self.len -= self.pos;
-                self.pos = 0;
-            }
-            if self.len >= self.buf.len() {
-                self.buf.resize(2 * self.buf.len(), 0);
-            }
-            let read = self.src.read(&mut self.buf[self.len..]).unwrap();
-            if read == 0 {
+            if self.read() == 0 {
                 return &self.buf[mem::replace(&mut self.pos, self.len)..self.len];
             }
-            self.len += read;
         }
+    }
+}
+impl<R: Read> KInput<R> {
+    fn read(&mut self) -> usize {
+        if self.pos > 0 {
+            self.buf.copy_within(self.pos..self.len, 0);
+            self.len -= self.pos;
+            self.pos = 0;
+        } else if self.len >= self.buf.len() {
+            self.buf.resize(2 * self.buf.len(), 0);
+        }
+        let read = self.src.read(&mut self.buf[self.len..]).unwrap();
+        self.len += read;
+        read
     }
 }
 pub struct Iter<'a, T, I: ?Sized>(&'a mut I, std::marker::PhantomData<*const T>);
