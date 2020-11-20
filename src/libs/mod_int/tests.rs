@@ -15,3 +15,21 @@ fn var_mod() {
     set_var_mod(13);
     assert_eq!(VarMod::modulo(), 13);
 }
+
+#[test]
+fn binom() {
+    const N: usize = 20;
+    let f = fact::Fact::<Mod1e9p7>::new(N);
+    let mut pascal = [[ModInt::new(0); N + 1]; N + 1];
+    for i in 0..=N {
+        pascal[i][0] = ModInt::new(1);
+        for j in 1..=i {
+            pascal[i][j] = pascal[i - 1][j - 1] + pascal[i - 1][j];
+        }
+    }
+    for i in 0..=N {
+        for j in 0..=N {
+            assert_eq!(f.binom(i, j), pascal[i][j]);
+        }
+    }
+}

@@ -6,6 +6,7 @@ mod segment_tree;
 pub use segment_tree::*;
 pub mod sparse_table;
 pub mod splay_tree;
+pub mod swag;
 
 #[cfg(test)]
 mod tests;
