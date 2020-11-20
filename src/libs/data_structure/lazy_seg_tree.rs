@@ -1,7 +1,5 @@
-pub trait Monoid {
-    fn id() -> Self;
-    fn op(&self, other: &Self) -> Self;
-}
+use super::Monoid;
+
 pub struct LazySegTree<S, F, Map> {
     ss: Box<[S]>,
     fs: Box<[F]>,

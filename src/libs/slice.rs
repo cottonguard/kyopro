@@ -2,7 +2,7 @@ pub fn lower_bound<T: Ord>(a: &[T], x: &T) -> usize {
     let mut l = -1;
     let mut r = a.len() as isize;
     while r - l > 1 {
-        let m = l + (r - l) / 2;
+        let m = (l + r) / 2;
         if &a[m as usize] >= x {
             r = m;
         } else {

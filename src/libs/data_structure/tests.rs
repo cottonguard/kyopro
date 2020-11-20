@@ -1,8 +1,8 @@
 use super::*;
 use crate::random::Pcg;
 use fenwick_tree::FenwickTree;
-use segment_tree::{Monoid, SegmentTree};
 use sparse_table::SparseTable;
+use lazy_seg_tree::LazySegTree;
 
 #[test]
 fn sparse_table() {
@@ -67,7 +67,7 @@ fn dsu_with_data_drop() {
 }
 
 #[test]
-fn segtree_max() {
+fn seg_tree_max() {
     impl Monoid for u32 {
         fn id() -> u32 {
             0
@@ -96,6 +96,41 @@ fn segtree_max() {
             } else {
                 st.update(i, &x);
                 a[i] = a[i].max(x);
+            }
+        }
+    }
+}
+
+#[test]
+fn lazy_seg_tree_range_add_range_max() {
+    struct Add(u32);
+    impl Monoid for Add {
+        fn id() -> Self { Add(0) }
+        fn op(&self, other: &Self) -> Self { Add(self.0 + other.0) }
+    }
+    struct Max(u32);
+    impl Monoid for Max {
+        fn id() -> Self { Max(0) }
+        fn op(&self, other: &Self) -> Self { Max(self.0.max(other.0)) }
+    }
+    const N: usize = 20;
+    let mut rand = Pcg::new(1818);
+    let mut lst = LazySegTree::new(N, |max: &Add, add: &Max| Max(max.0 + add.0));
+    let mut a = vec![0; N];
+    for i in 0..30 {
+        if i % 3 == 0 {
+            let l = rand.next_u32() as usize % N;
+            let r = l + rand.next_u32() as usize % (N - l) + 1;
+            let stmax = lst.prod(l, r);
+            let amax = *a[l..r].iter().max().unwrap();
+            assert_eq!(stmax.0, amax);
+        } else {
+            let l = rand.next_u32() as usize % N;
+            let r = l + rand.next_u32() as usize % (N - l) + 1;
+            let x = rand.next_u32() / N as u32;
+            lst.apply(l, r, &Add(x));
+            for a in &mut a[l..r] {
+                *a += x;
             }
         }
     }
