@@ -139,3 +139,26 @@ macro_rules! kdbg {
         if cfg!(debug_assertions) { dbg!($($v),*) } else { ($($v),*) }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn input() {
+        let s = b"123 -3230     abcd \r\n  efgh\n12.34";
+        let mut kin = KInput::new(s as &[u8]);
+        assert_eq!(kin.input::<(u32, i32)>(), (123, -3230));
+        assert_eq!(kin.input::<Vec<u8>>(), b"abcd");
+        assert_eq!(kin.input::<String>(), "efgh");
+        assert!((kin.input::<f64>() - 12.34).abs() < 1e-15);
+        assert_eq!(kin.bytes(), b"");
+    }
+
+    #[test]
+    fn seq() {
+        let s = b"1  2 3\n4 5";
+        let mut kin = KInput::new(s as &[u8]);
+        let a: Vec<i32> = kin.seq(5);
+        assert_eq!(a, [1, 2, 3, 4, 5]);
+    }
+}
