@@ -9,6 +9,9 @@ impl Dsu {
         }
         u
     }
+    pub fn is_root(&self, u: usize) -> bool {
+        self.0[u] < 0
+    }
     pub fn unite(&mut self, u: usize, v: usize) -> (usize, usize) {
         let ru = self.root(u);
         let rv = self.root(v);
@@ -53,6 +56,9 @@ impl<T> DsuWithData<T> {
     }
     pub fn root(&self, u: usize) -> usize {
         self.inner.root(u)
+    }
+    pub fn is_root(&self, u: usize) -> bool {
+        self.inner.is_root(u)
     }
     pub fn is_same(&self, u: usize, v: usize) -> bool {
         self.inner.is_same(u, v)
