@@ -50,4 +50,3 @@ impl<T: Ord, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Iterator for Merge<
         )
     }
 }
-
