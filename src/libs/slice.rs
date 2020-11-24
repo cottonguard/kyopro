@@ -1,9 +1,15 @@
 pub fn lower_bound<T: Ord>(a: &[T], x: &T) -> usize {
+    bisect(a, |v| v >= x)
+}
+pub fn upper_bound<T: Ord>(a: &[T], x: &T) -> usize {
+    bisect(a, |v| v > x)
+}
+fn bisect<T: Ord, F: Fn(&T) -> bool>(a: &[T], cond: F) -> usize {
     let mut l = -1;
     let mut r = a.len() as isize;
     while r - l > 1 {
         let m = (l + r) / 2;
-        if &a[m as usize] >= x {
+        if cond(&a[m as usize]) {
             r = m;
         } else {
             l = m;
