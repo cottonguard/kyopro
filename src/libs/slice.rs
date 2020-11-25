@@ -45,6 +45,14 @@ mod tests {
         assert_eq!(super::lower_bound(&a, &7), 7);
         assert_eq!(super::lower_bound(&a, &100), a.len());
     }
+    #[test]
+    fn upper_bound() {
+        let a = [1, 1, 2, 2, 2, 3, 4, 10, 10, 11];
+        assert_eq!(super::upper_bound(&a, &2), 5);
+        assert_eq!(super::upper_bound(&a, &1), 2);
+        assert_eq!(super::upper_bound(&a, &7), 7);
+        assert_eq!(super::upper_bound(&a, &100), a.len());
+    }
 
     #[test]
     fn next_permutation() {
