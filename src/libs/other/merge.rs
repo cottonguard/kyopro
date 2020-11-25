@@ -56,7 +56,9 @@ mod tests {
     #[test]
     fn merge() {
         let a = [1, 2, 3, 5, 6];
-        let merged: Vec<_> = super::merge(a.iter().copied(), a.iter().map(|x| 2 * x)).collect();
-        assert_eq!(merged, [1, 2, 2, 3, 4, 5, 6, 6, 10, 12])
+        let merge = super::merge(a.iter().copied(), a.iter().map(|x| 2 * x));
+        assert_eq!(merge.size_hint(), (10, Some(10)));
+        let merged: Vec<_> = merge.collect();
+        assert_eq!(merged, [1, 2, 2, 3, 4, 5, 6, 6, 10, 12]);
     }
 }
