@@ -50,3 +50,13 @@ impl<T: Ord, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Iterator for Merge<
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn merge() {
+        let a = [1, 2, 3, 5, 6];
+        let merged: Vec<_> = super::merge(a.iter().copied(), a.iter().map(|x| 2 * x)).collect();
+        assert_eq!(merged, [1, 2, 2, 3, 4, 5, 6, 6, 10, 12])
+    }
+}
