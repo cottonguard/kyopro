@@ -19,3 +19,12 @@ pub fn suffix_array<T: Into<usize> + Copy>(s: &[T]) -> Vec<usize> {
     }
     sa
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn suffix_array() {
+        let sa = super::suffix_array(b"mississippi");
+        assert_eq!(sa, [10, 7, 4, 1, 0, 9, 8, 6, 3, 5, 2]);
+    }
+}
