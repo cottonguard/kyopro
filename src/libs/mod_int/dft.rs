@@ -22,8 +22,8 @@ pub fn dft<M: PrimitiveRoot>(a: &mut [ModInt<M>], inv: bool) {
     let mut w = Vec::with_capacity(n / 2);
     w.push(ModInt::new(1));
     for m in (1..).map(|i| 1 << i).take_while(|m| *m <= n) {
-        let neg1 = M::modulo() as u64 - 1;
-        let s = neg1 / m as u64;
+        let neg1 = M::modulo() - 1;
+        let s = neg1 / m as i32;
         let w1 = if inv { pr.pow(neg1 - s) } else { pr.pow(s) };
         w.resize(m / 2, ModInt::new(0));
         for i in (0..m / 4).rev() {

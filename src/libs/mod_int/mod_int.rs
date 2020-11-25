@@ -36,15 +36,25 @@ impl<M: Modulo> ModInt<M> {
         debug_assert!(x < M::modulo());
         Self(x, PhantomData)
     }
+    pub fn normalize(self) -> Self {
+        if 0 <= self.0 && self.0 < self.m() {
+            self
+        } else {
+            Self::new(self.0.rem_euclid(self.m()))
+        }
+    }
     pub fn get(self) -> i32 {
         self.0
     }
     pub fn inv(self) -> Self {
-        self.pow((self.m() - 2) as u64)
+        self.pow(self.m() - 2)
     }
-    pub fn pow(self, mut n: u64) -> Self {
+    pub fn pow(self, mut n: i32) -> Self {
+        while n < 0 {
+            n += self.m() - 1;
+        }
         let mut x = self;
-        let mut y = Self(1, self.1);
+        let mut y = Self::new(1);
         while n > 0 {
             if n % 2 == 1 {
                 y *= x;
@@ -55,7 +65,7 @@ impl<M: Modulo> ModInt<M> {
         y
     }
     pub fn half(self) -> Self {
-        Self(self.0 / 2 + self.0 % 2 * ((self.m() + 1) / 2), self.1)
+        Self::new(self.0 / 2 + self.0 % 2 * ((self.m() + 1) / 2))
     }
     fn m(self) -> i32 {
         M::modulo()
@@ -64,7 +74,7 @@ impl<M: Modulo> ModInt<M> {
 impl<M: Modulo> ops::Neg for ModInt<M> {
     type Output = Self;
     fn neg(self) -> Self {
-        Self(if self.0 == 0 { 0 } else { self.m() - self.0 }, self.1)
+        Self::new(if self.0 == 0 { 0 } else { self.m() - self.0 })
     }
 }
 impl<M: Modulo> ops::AddAssign for ModInt<M> {
