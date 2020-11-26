@@ -3,6 +3,7 @@ use crate::random::Pcg;
 use fenwick_tree::FenwickTree;
 use lazy_seg_tree::LazySegTree;
 use sparse_table::SparseTable;
+use wavelet_matrix::WaveletMatrix;
 
 #[test]
 fn sparse_table() {
@@ -141,5 +142,26 @@ fn lazy_seg_tree_range_add_range_max() {
                 *a += x;
             }
         }
+    }
+}
+
+#[test]
+fn wavelet_matrix_rank() {
+    use std::iter;
+    const N: usize = 1000;
+    const K: usize = 50;
+    let mut rand = Pcg::new(1352);
+    let values: Vec<_> = iter::repeat_with(|| rand.next_u32()).take(K).collect();
+    let mut cnt = [0; 100];
+    let a: Vec<_> = iter::repeat_with(|| {
+        let i = rand.next_u32() as usize % K;
+        cnt[i] += 1;
+        values[i]
+    })
+    .take(N)
+    .collect();
+    let wm = WaveletMatrix::new(a);
+    for i in 0..K {
+        assert_eq!(wm.rank(0, N, values[i]), cnt[i]);
     }
 }
