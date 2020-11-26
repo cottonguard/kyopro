@@ -79,6 +79,7 @@ impl BitVector {
     fn rank_zero(&self, r: usize) -> usize {
         r - self.rank_one(r)
     }
+    /*
     fn select_one(&self, n: usize) -> usize {
         let mut l = -1;
         let mut r = 64 * self.bits.len() as isize;
@@ -92,4 +93,5 @@ impl BitVector {
         }
         r as usize
     }
+    */
 }
