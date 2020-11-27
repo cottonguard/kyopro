@@ -2,13 +2,12 @@ pub type Mint = ModInt<Mod998244353>;
 pub fn mint(x: i32) -> Mint {
     ModInt::new(x)
 }
-pub trait Modulo: Copy {
+pub trait Modulo {
     fn modulo() -> i32;
 }
 macro_rules! modulo_impl {
     ($($Type:ident $val:tt)*) => {
-        $(#[derive(Copy, Clone, Eq, PartialEq, Default, Hash)]
-        pub struct $Type;
+        $(pub struct $Type;
         impl Modulo for $Type {
             fn modulo() -> i32 {
                 $val
@@ -18,7 +17,6 @@ macro_rules! modulo_impl {
 }
 modulo_impl!(Mod998244353 998244353 Mod1e9p7 1000000007);
 use std::sync::atomic;
-#[derive(Copy, Clone, Eq, PartialEq, Default, Hash)]
 pub struct VarMod;
 static VAR_MOD: atomic::AtomicI32 = atomic::AtomicI32::new(0);
 pub fn set_var_mod(m: i32) {
@@ -30,7 +28,6 @@ impl Modulo for VarMod {
     }
 }
 use std::{fmt, marker::PhantomData, ops};
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct ModInt<M>(i32, PhantomData<M>);
 impl<M: Modulo> ModInt<M> {
     pub fn new(x: i32) -> Self {
@@ -86,7 +83,7 @@ impl<M: Modulo> ops::MulAssign for ModInt<M> {
 }
 impl<M: Modulo> ops::DivAssign for ModInt<M> {
     fn div_assign(&mut self, rhs: Self) {
-        assert_ne!(rhs.0, 0);
+        assert_ne!(rhs.get(), 0);
         *self *= rhs.inv();
     }
 }
@@ -177,12 +174,44 @@ macro_rules! mod_int_from_impl {
     }
 }
 mod_int_from_impl!(isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128);
-impl<M: Modulo> fmt::Display for ModInt<M> {
+impl<M> Copy for ModInt<M> {}
+impl<M> Clone for ModInt<M> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<M: Modulo> Default for ModInt<M> {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+impl<M> std::cmp::PartialEq for ModInt<M> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl<M> std::cmp::Eq for ModInt<M> {}
+impl<M> std::cmp::PartialOrd for ModInt<M> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+impl<M> std::cmp::Ord for ModInt<M> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+impl<M> std::hash::Hash for ModInt<M> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+impl<M> fmt::Display for ModInt<M> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
-impl<M: Modulo> fmt::Debug for ModInt<M> {
+impl<M> fmt::Debug for ModInt<M> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("ModInt(")?;
         self.0.fmt(f)?;

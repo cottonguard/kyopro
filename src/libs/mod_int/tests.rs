@@ -6,6 +6,9 @@ fn mod_int() {
     let x = Mint::new(57577);
     assert_eq!(x / x, Mint::new(1));
     assert_eq!(x.half() * Mint::new(2), x);
+    assert_eq!(x.pow((Mint::modulo() - 1) as u64 * 1234567), Mint::new(1));
+    assert_eq!(x.pow((Mint::modulo() - 1) as i64 * -1234567), Mint::new(1));
+    assert_eq!(Mint::from(-1000) + Mint::from(1000), Mint::new(0));
 }
 
 #[test]
