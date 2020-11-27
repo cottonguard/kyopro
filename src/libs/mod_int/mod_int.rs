@@ -1,3 +1,4 @@
+pub type Mint = ModInt<Mod998244353>;
 pub fn mint<T: Into<i32>>(x: T) -> ModInt<Mod998244353> {
     ModInt::new(x.into())
 }
@@ -6,7 +7,7 @@ pub trait Modulo: Copy {
 }
 macro_rules! modulo_impl {
     ($($Type:ident $val:tt)*) => {
-        $(#[derive(Copy, Clone, Eq, PartialEq, Default)]
+        $(#[derive(Copy, Clone, Eq, PartialEq, Default, Hash)]
         pub struct $Type;
         impl Modulo for $Type {
             fn modulo() -> i32 {
@@ -17,7 +18,7 @@ macro_rules! modulo_impl {
 }
 modulo_impl!(Mod998244353 998244353 Mod1e9p7 1000000007);
 use std::sync::atomic;
-#[derive(Copy, Clone, Eq, PartialEq, Default)]
+#[derive(Copy, Clone, Eq, PartialEq, Default, Hash)]
 pub struct VarMod;
 static VAR_MOD: atomic::AtomicI32 = atomic::AtomicI32::new(0);
 pub fn set_var_mod(m: i32) {
@@ -29,7 +30,7 @@ impl Modulo for VarMod {
     }
 }
 use std::{fmt, marker::PhantomData, ops};
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct ModInt<M>(i32, PhantomData<M>);
 impl<M: Modulo> ModInt<M> {
     pub fn new(x: i32) -> Self {
@@ -37,21 +38,21 @@ impl<M: Modulo> ModInt<M> {
         Self(x, PhantomData)
     }
     pub fn normalize(self) -> Self {
-        if 0 <= self.0 && self.0 < self.m() {
+        if self.0 < M::modulo() && 0 <= self.0 {
             self
         } else {
-            Self::new(self.0.rem_euclid(self.m()))
+            Self::new(self.0.rem_euclid(M::modulo()))
         }
     }
     pub fn get(self) -> i32 {
         self.0
     }
     pub fn inv(self) -> Self {
-        self.pow(self.m() - 2)
+        self.pow(M::modulo() - 2)
     }
     pub fn pow(self, mut n: i32) -> Self {
         while n < 0 {
-            n += self.m() - 1;
+            n += M::modulo() - 1;
         }
         let mut x = self;
         let mut y = Self::new(1);
@@ -65,23 +66,23 @@ impl<M: Modulo> ModInt<M> {
         y
     }
     pub fn half(self) -> Self {
-        Self::new(self.0 / 2 + self.0 % 2 * ((self.m() + 1) / 2))
+        Self::new(self.0 / 2 + self.0 % 2 * ((M::modulo() + 1) / 2))
     }
-    fn m(self) -> i32 {
+    pub fn modulo() -> i32 {
         M::modulo()
     }
 }
 impl<M: Modulo> ops::Neg for ModInt<M> {
     type Output = Self;
     fn neg(self) -> Self {
-        Self::new(if self.0 == 0 { 0 } else { self.m() - self.0 })
+        Self::new(if self.0 == 0 { 0 } else { M::modulo() - self.0 })
     }
 }
 impl<M: Modulo> ops::AddAssign for ModInt<M> {
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
-        if self.0 >= self.m() {
-            self.0 -= self.m();
+        if self.0 >= M::modulo() {
+            self.0 -= M::modulo();
         }
     }
 }
@@ -89,13 +90,13 @@ impl<M: Modulo> ops::SubAssign for ModInt<M> {
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
         if self.0 < 0 {
-            self.0 += self.m();
+            self.0 += M::modulo();
         }
     }
 }
 impl<M: Modulo> ops::MulAssign for ModInt<M> {
     fn mul_assign(&mut self, rhs: Self) {
-        self.0 = (self.0 as u32 as u64 * rhs.0 as u32 as u64 % self.m() as u32 as u64) as i32;
+        self.0 = (self.0 as u32 as u64 * rhs.0 as u32 as u64 % M::modulo() as u32 as u64) as i32;
     }
 }
 impl<M: Modulo> ops::DivAssign for ModInt<M> {
