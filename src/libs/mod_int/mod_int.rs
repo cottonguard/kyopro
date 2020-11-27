@@ -1,6 +1,6 @@
 pub type Mint = ModInt<Mod998244353>;
-pub fn mint<T: Into<i32>>(x: T) -> ModInt<Mod998244353> {
-    ModInt::new(x.into())
+pub fn mint(x: i32) -> Mint {
+    ModInt::new(x)
 }
 pub trait Modulo: Copy {
     fn modulo() -> i32;
@@ -49,21 +49,6 @@ impl<M: Modulo> ModInt<M> {
     }
     pub fn inv(self) -> Self {
         self.pow(M::modulo() - 2)
-    }
-    pub fn pow(self, mut n: i32) -> Self {
-        while n < 0 {
-            n += M::modulo() - 1;
-        }
-        let mut x = self;
-        let mut y = Self::new(1);
-        while n > 0 {
-            if n % 2 == 1 {
-                y *= x;
-            }
-            x *= x;
-            n /= 2;
-        }
-        y
     }
     pub fn half(self) -> Self {
         Self::new(self.0 / 2 + self.0 % 2 * ((M::modulo() + 1) / 2))
@@ -114,6 +99,29 @@ macro_rules! op_impl {
                 ops::$OpAssign::$op_assign(&mut res, rhs);
                 res
             }
+        }
+        impl<M: Modulo> ops::$Op<&Self> for ModInt<M> {
+            type Output = Self;
+            fn $op(self, rhs: &Self) -> Self {
+                self.$op(*rhs)
+            }
+        }
+        impl<M: Modulo> ops::$Op<ModInt<M>> for &ModInt<M> {
+            type Output = ModInt<M>;
+            fn $op(self, rhs: ModInt<M>) -> ModInt<M> {
+                (*self).$op(rhs)
+            }
+        }
+        impl<M: Modulo> ops::$Op<&ModInt<M>> for &ModInt<M> {
+            type Output = ModInt<M>;
+            fn $op(self, rhs: &ModInt<M>) -> ModInt<M> {
+                (*self).$op(*rhs)
+            }
+        }
+        impl<M: Modulo> ops::$OpAssign<&ModInt<M>> for ModInt<M> {
+            fn $op_assign(&mut self, rhs: &ModInt<M>) {
+                self.$op_assign(*rhs);
+            }
         })*
     };
 }
@@ -133,6 +141,42 @@ impl<M: Modulo> std::iter::Product for ModInt<M> {
         iter.fold(ModInt::new(1), |x, y| x * y)
     }
 }
+pub trait Pow<T> {
+    fn pow(self, n: T) -> Self;
+}
+impl<M: Modulo> Pow<u32> for ModInt<M> {
+    fn pow(mut self, mut n: u32) -> Self {
+        let mut y = Self::new(1);
+        while n > 0 {
+            if n % 2 == 1 {
+                y *= self;
+            }
+            self *= self;
+            n /= 2;
+        }
+        y
+    }
+}
+macro_rules! mod_int_pow_impl {
+    ($($T:ident)*) => {
+        $(impl<M: Modulo> Pow<$T> for ModInt<M> {
+            fn pow(self, n: $T) -> Self {
+                self.pow(n.rem_euclid(M::modulo() as $T - 1) as u32)
+            }
+        })*
+    };
+}
+mod_int_pow_impl!(isize i32 i64 usize u64);
+macro_rules! mod_int_from_impl {
+    ($($T:ident)*) => {
+        $(impl<M: Modulo> From<$T> for ModInt<M> {
+            fn from(x: $T) -> Self {
+                Self::new(x.rem_euclid(M::modulo() as $T) as i32)
+            }
+        })*
+    }
+}
+mod_int_from_impl!(isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128);
 impl<M: Modulo> fmt::Display for ModInt<M> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
