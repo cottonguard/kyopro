@@ -168,7 +168,11 @@ macro_rules! mod_int_from_impl {
     ($($T:ident)*) => {
         $(impl<M: Modulo> From<$T> for ModInt<M> {
             fn from(x: $T) -> Self {
-                Self::new(x.rem_euclid(M::modulo() as $T) as i32)
+                if M::modulo() <= $T::max_value() as i32 {
+                    Self::new(x.rem_euclid(M::modulo() as $T) as i32)
+                } else {
+                    Self::new(x as i32).normalize()
+                }
             }
         })*
     }

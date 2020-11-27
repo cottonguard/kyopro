@@ -9,6 +9,8 @@ fn mod_int() {
     assert_eq!(x.pow((Mint::modulo() - 1) as u64 * 1234567), Mint::new(1));
     assert_eq!(x.pow((Mint::modulo() - 1) as i64 * -1234567), Mint::new(1));
     assert_eq!(Mint::from(-1000) + Mint::from(1000), Mint::new(0));
+    assert_eq!(Mint::from(17i8), Mint::new(17));
+    assert_eq!(Mint::from(-10i8), Mint::new(Mint::modulo() - 10));
 }
 
 #[test]
