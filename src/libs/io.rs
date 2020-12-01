@@ -1,16 +1,22 @@
-use std::{io::prelude::*, mem};
+use std::{
+    io::prelude::*,
+    iter::FromIterator,
+    marker::PhantomData,
+    mem::{self, MaybeUninit},
+    ptr, slice, str,
+};
 pub trait Input {
     fn bytes(&mut self) -> &[u8];
     fn str(&mut self) -> &str {
-        std::str::from_utf8(self.bytes()).unwrap()
+        str::from_utf8(self.bytes()).unwrap()
     }
-    fn input<T: InputParse>(&mut self) -> T {
+    fn input<T: InputItem>(&mut self) -> T {
         T::input(self)
     }
-    fn iter<T: InputParse>(&mut self) -> Iter<T, Self> {
-        Iter(self, std::marker::PhantomData)
+    fn iter<T: InputItem>(&mut self) -> Iter<T, Self> {
+        Iter(self, PhantomData)
     }
-    fn seq<T: InputParse, B: std::iter::FromIterator<T>>(&mut self, n: usize) -> B {
+    fn seq<T: InputItem, B: FromIterator<T>>(&mut self, n: usize) -> B {
         self.iter().take(n).collect()
     }
 }
@@ -63,8 +69,8 @@ impl<R: Read> KInput<R> {
         read
     }
 }
-pub struct Iter<'a, T, I: ?Sized>(&'a mut I, std::marker::PhantomData<*const T>);
-impl<'a, T: InputParse, I: Input + ?Sized> Iterator for Iter<'a, T, I> {
+pub struct Iter<'a, T, I: ?Sized>(&'a mut I, PhantomData<*const T>);
+impl<'a, T: InputItem, I: Input + ?Sized> Iterator for Iter<'a, T, I> {
     type Item = T;
     fn next(&mut self) -> Option<T> {
         Some(self.0.input())
@@ -73,17 +79,17 @@ impl<'a, T: InputParse, I: Input + ?Sized> Iterator for Iter<'a, T, I> {
         (!0, None)
     }
 }
-pub trait InputParse: Sized {
+pub trait InputItem: Sized {
     fn input<I: Input + ?Sized>(src: &mut I) -> Self;
 }
-impl InputParse for Vec<u8> {
+impl InputItem for Vec<u8> {
     fn input<I: Input + ?Sized>(src: &mut I) -> Self {
         src.bytes().to_owned()
     }
 }
 macro_rules! from_str_impl {
     { $($T:ty)* } => {
-        $(impl InputParse for $T {
+        $(impl InputItem for $T {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
                 src.str().parse::<$T>().unwrap()
             }
@@ -93,14 +99,14 @@ macro_rules! from_str_impl {
 from_str_impl! { String char bool f32 f64 }
 macro_rules! parse_int_impl {
     { $($I:ty: $U:ty)* } => {
-        $(impl InputParse for $I {
+        $(impl InputItem for $I {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
                 let f = |s: &[u8]| s.iter().fold(0, |x, b| 10 * x + (b & 0xf) as $I);
                 let s = src.bytes();
                 if let Some((&b'-', t)) = s.split_first() { -f(t) } else { f(s) }
             }
         }
-        impl InputParse for $U {
+        impl InputItem for $U {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
                 src.bytes().iter().fold(0, |x, b| 10 * x + (b & 0xf) as $U)
             }
@@ -110,7 +116,7 @@ macro_rules! parse_int_impl {
 parse_int_impl! { isize:usize i8:u8 i16:u16 i32:u32 i64:u64 i128:u128 }
 macro_rules! tuple_impl {
     ($H:ident $($T:ident)*) => {
-        impl<$H: InputParse, $($T: InputParse),*> InputParse for ($H, $($T),*) {
+        impl<$H: InputItem, $($T: InputItem),*> InputItem for ($H, $($T),*) {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
                 ($H::input(src), $($T::input(src)),*)
             }
@@ -122,9 +128,9 @@ macro_rules! tuple_impl {
 tuple_impl!(A B C D E F G);
 macro_rules! array_impl {
     { $($N:literal)* } => {
-        $(impl<T: InputParse> InputParse for [T; $N] {
+        $(impl<T: InputItem> InputItem for [T; $N] {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
-                let mut arr = mem::MaybeUninit::uninit();
+                let mut arr = MaybeUninit::uninit();
                 unsafe {
                     let ptr = arr.as_mut_ptr() as *mut T;
                     for i in 0..$N {
@@ -137,6 +143,109 @@ macro_rules! array_impl {
     };
 }
 array_impl! { 1 2 3 4 5 6 7 8 }
+pub trait Output: Write + Sized {
+    fn bytes(&mut self, buf: &[u8]) {
+        self.write_all(buf).unwrap();
+    }
+    fn output<T: OutputItem>(&mut self, x: T) {
+        x.output(self);
+    }
+    fn byte(&mut self, b: u8) {
+        self.bytes(slice::from_ref(&b));
+    }
+    fn ws(&mut self) {
+        self.byte(b' ');
+    }
+    fn ln(&mut self) {
+        self.byte(b'\n');
+        self.flush_debug();
+    }
+    fn seq<T: OutputItem, I: IntoIterator<Item = T>>(&mut self, iter: I, delim: u8) {
+        let mut first = true;
+        for x in iter.into_iter() {
+            if !first {
+                self.byte(delim);
+            }
+            first = false;
+            self.output(x);
+        }
+    }
+    fn flush_debug(&mut self) {
+        if cfg!(debug_assertions) {
+            self.flush().unwrap();
+        }
+    }
+}
+impl<W: Write + Sized> Output for W {}
+pub trait OutputItem {
+    fn output<O: Output>(self, dest: &mut O);
+}
+impl OutputItem for &str {
+    fn output<O: Output>(self, dest: &mut O) {
+        dest.bytes(self.as_bytes());
+    }
+}
+macro_rules! output_int_impl {
+    ($conv:ident; $via:ident; $($T:ident)*) => {
+        $(impl OutputItem for $T {
+            fn output<O: Output>(self, dest: &mut O) {
+                let mut buf = MaybeUninit::<[u8; 20]>::uninit();
+                unsafe {
+                    let ptr = buf.as_mut_ptr() as *mut u8;
+                    let ofs = $conv(self as $via, ptr, 20);
+                    dest.bytes(slice::from_raw_parts(ptr.add(ofs), 20 - ofs));
+                }
+            }
+        }
+        impl OutputItem for &$T {
+            fn output<O: Output>(self, dest: &mut O) {
+                (*self).output(dest);
+            }
+        })*
+    };
+}
+output_int_impl!(i64_to_bytes; i64; i8 i16 i32 i64);
+output_int_impl!(u64_to_bytes; u64; u8 u16 u32 u64);
+static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
+        2021222324252627282930313233343536373839\
+        4041424344454647484950515253545556575859\
+        6061626364656667686970717273747576777879\
+        8081828384858687888990919293949596979899";
+unsafe fn i64_to_bytes(x: i64, buf: *mut u8, len: usize) -> usize {
+    let (neg, x) = if x < 0 { (true, -x) } else { (false, x) };
+    let i = u64_to_bytes(x as u64, buf, len);
+    if neg {
+        *buf.add(i) = b'-';
+        i - 1
+    } else {
+        i
+    }
+}
+unsafe fn u64_to_bytes(mut x: u64, buf: *mut u8, len: usize) -> usize {
+    let lut = DEC_DIGITS_LUT.as_ptr();
+    let mut i = len;
+    while x >= 10000 {
+        let rem = (x % 10000) as usize;
+        i -= 4;
+        ptr::copy_nonoverlapping(lut.add(2 * (rem / 100)), buf.add(i), 2);
+        ptr::copy_nonoverlapping(lut.add(2 * (rem % 100)), buf.add(i + 2), 2);
+        x /= 10000;
+    }
+    let mut x = x as usize;
+    if x >= 100 {
+        i -= 2;
+        ptr::copy_nonoverlapping(lut.add(2 * (x % 100)), buf.add(i), 2);
+        x /= 100;
+    }
+    if x >= 10 {
+        i -= 2;
+        ptr::copy_nonoverlapping(lut.add(2 * x), buf.add(i), 2);
+    } else {
+        i -= 1;
+        *buf.add(i) = x as u8 + b'0';
+    }
+    i
+}
 #[macro_export]
 macro_rules! kdbg {
     ($($v:expr),*) => {
