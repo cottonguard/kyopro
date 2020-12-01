@@ -213,13 +213,12 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
         8081828384858687888990919293949596979899";
 unsafe fn i64_to_bytes(x: i64, buf: *mut u8, len: usize) -> usize {
     let (neg, x) = if x < 0 { (true, -x) } else { (false, x) };
-    let i = u64_to_bytes(x as u64, buf, len);
+    let mut i = u64_to_bytes(x as u64, buf, len);
     if neg {
+        i -= 1;
         *buf.add(i) = b'-';
-        i - 1
-    } else {
-        i
     }
+    i
 }
 unsafe fn u64_to_bytes(mut x: u64, buf: *mut u8, len: usize) -> usize {
     let lut = DEC_DIGITS_LUT.as_ptr();
@@ -273,5 +272,35 @@ mod tests {
         let mut kin = KInput::new(s as &[u8]);
         let a: Vec<i32> = kin.seq(5);
         assert_eq!(a, [1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn output_int() {
+        let mut out = Vec::<u8>::new();
+        let mut out_fmt = Vec::<u8>::new();
+        let mut x = 0;
+        for i in 1..10 {
+            x = 10 * x + i;
+            let y = if i % 3 == 0 { -x } else { x };
+            out.output(&y);
+            out_fmt.extend_from_slice(format!("{}", y).as_bytes());
+        }
+        // dbg!(String::from_utf8_lossy(&out));
+        assert_eq!(out, out_fmt);
+    }
+
+    #[test]
+    fn output_int_seq() {
+        let a: Vec<_> = (-10..=10).collect();
+        let mut out = Vec::<u8>::new();
+        out.seq(&a, b' ');
+        let mut out_fmt = Vec::new();
+        for (i, x) in a.into_iter().enumerate() {
+            if i > 0 {
+                out_fmt.push(b' ');
+            }
+            out_fmt.extend_from_slice(format!("{}", x).as_bytes());
+        }
+        assert_eq!(out, out_fmt);
     }
 }
