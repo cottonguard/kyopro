@@ -35,27 +35,6 @@ impl<R: Read> KInput<R> {
             len: 0,
         }
     }
-}
-impl<R: Read> Input for KInput<R> {
-    fn bytes(&mut self) -> &[u8] {
-        loop {
-            while let Some(delim) = self.buf[self.pos..self.len]
-                .iter()
-                .position(|b| b.is_ascii_whitespace())
-            {
-                let p = self.pos;
-                self.pos += delim + 1;
-                if delim > 0 {
-                    return &self.buf[p..p + delim];
-                }
-            }
-            if self.read() == 0 {
-                return &self.buf[mem::replace(&mut self.pos, self.len)..self.len];
-            }
-        }
-    }
-}
-impl<R: Read> KInput<R> {
     fn read(&mut self) -> usize {
         if self.pos > 0 {
             self.buf.copy_within(self.pos..self.len, 0);
@@ -67,6 +46,25 @@ impl<R: Read> KInput<R> {
         let read = self.src.read(&mut self.buf[self.len..]).unwrap();
         self.len += read;
         read
+    }
+}
+impl<R: Read> Input for KInput<R> {
+    fn bytes(&mut self) -> &[u8] {
+        loop {
+            while let Some(d) = self.buf[self.pos..self.len]
+                .iter()
+                .position(u8::is_ascii_whitespace)
+            {
+                let p = self.pos;
+                self.pos += d + 1;
+                if d > 0 {
+                    return &self.buf[p..p + d];
+                }
+            }
+            if self.read() == 0 {
+                return &self.buf[mem::replace(&mut self.pos, self.len)..self.len];
+            }
+        }
     }
 }
 pub struct Iter<'a, T, I: ?Sized>(&'a mut I, PhantomData<*const T>);
@@ -131,8 +129,8 @@ macro_rules! array_impl {
         $(impl<T: InputItem> InputItem for [T; $N] {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
                 let mut arr = MaybeUninit::uninit();
+                let ptr = arr.as_mut_ptr() as *mut T;
                 unsafe {
-                    let ptr = arr.as_mut_ptr() as *mut T;
                     for i in 0..$N {
                         ptr.add(i).write(src.input());
                     }
@@ -153,21 +151,14 @@ pub trait Output: Write + Sized {
     fn byte(&mut self, b: u8) {
         self.bytes(slice::from_ref(&b));
     }
-    fn ws(&mut self) {
-        self.byte(b' ');
-    }
-    fn ln(&mut self) {
-        self.byte(b'\n');
-        self.flush_debug();
-    }
     fn seq<T: OutputItem, I: IntoIterator<Item = T>>(&mut self, iter: I, delim: u8) {
-        let mut first = true;
-        for x in iter.into_iter() {
-            if !first {
-                self.byte(delim);
-            }
-            first = false;
+        let mut iter = iter.into_iter();
+        if let Some(x) = iter.next() {
             self.output(x);
+            for x in iter {
+                self.byte(delim);
+                self.output(x);
+            }
         }
     }
     fn flush_debug(&mut self) {
@@ -186,13 +177,13 @@ impl OutputItem for &str {
     }
 }
 macro_rules! output_int_impl {
-    ($conv:ident; $via:ident; $($T:ident)*) => {
+    ($conv:ident; $U:ty; $($T:ty)*) => {
         $(impl OutputItem for $T {
             fn output<O: Output>(self, dest: &mut O) {
                 let mut buf = MaybeUninit::<[u8; 20]>::uninit();
                 unsafe {
                     let ptr = buf.as_mut_ptr() as *mut u8;
-                    let ofs = $conv(self as $via, ptr, 20);
+                    let ofs = $conv(self as $U, ptr, 20);
                     dest.bytes(slice::from_raw_parts(ptr.add(ofs), 20 - ofs));
                 }
             }
@@ -204,13 +195,13 @@ macro_rules! output_int_impl {
         })*
     };
 }
-output_int_impl!(i64_to_bytes; i64; i8 i16 i32 i64);
-output_int_impl!(u64_to_bytes; u64; u8 u16 u32 u64);
-static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
-        2021222324252627282930313233343536373839\
-        4041424344454647484950515253545556575859\
-        6061626364656667686970717273747576777879\
-        8081828384858687888990919293949596979899";
+output_int_impl!(i64_to_bytes; i64; isize i8 i16 i32 i64);
+output_int_impl!(u64_to_bytes; u64; usize u8 u16 u32 u64);
+static DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
+    2021222324252627282930313233343536373839\
+    4041424344454647484950515253545556575859\
+    6061626364656667686970717273747576777879\
+    8081828384858687888990919293949596979899";
 unsafe fn i64_to_bytes(x: i64, buf: *mut u8, len: usize) -> usize {
     let (neg, x) = if x < 0 { (true, -x) } else { (false, x) };
     let mut i = u64_to_bytes(x as u64, buf, len);
@@ -221,29 +212,49 @@ unsafe fn i64_to_bytes(x: i64, buf: *mut u8, len: usize) -> usize {
     i
 }
 unsafe fn u64_to_bytes(mut x: u64, buf: *mut u8, len: usize) -> usize {
-    let lut = DEC_DIGITS_LUT.as_ptr();
+    let lut = DIGITS_LUT.as_ptr();
     let mut i = len;
+    let mut two = |x| {
+        i -= 2;
+        ptr::copy_nonoverlapping(lut.add(2 * x), buf.add(i), 2);
+    };
     while x >= 10000 {
         let rem = (x % 10000) as usize;
-        i -= 4;
-        ptr::copy_nonoverlapping(lut.add(2 * (rem / 100)), buf.add(i), 2);
-        ptr::copy_nonoverlapping(lut.add(2 * (rem % 100)), buf.add(i + 2), 2);
+        two(rem % 100);
+        two(rem / 100);
         x /= 10000;
     }
     let mut x = x as usize;
     if x >= 100 {
-        i -= 2;
-        ptr::copy_nonoverlapping(lut.add(2 * (x % 100)), buf.add(i), 2);
+        two(x % 100);
         x /= 100;
     }
     if x >= 10 {
-        i -= 2;
-        ptr::copy_nonoverlapping(lut.add(2 * x), buf.add(i), 2);
+        two(x);
     } else {
         i -= 1;
         *buf.add(i) = x as u8 + b'0';
     }
     i
+}
+#[macro_export]
+macro_rules! out {
+    ($out:expr, $arg:expr) => {{
+        $out.output($arg);
+    }};
+    ($out:expr, $first:expr, $($rest:expr),*) => {{
+        $out.output($first);
+        $out.ws();
+        out!($out, $($rest),*);
+    }}
+}
+#[macro_export]
+macro_rules! outln {
+    ($out:expr, $($args:expr),*) => {{
+        out!($out, $($args),*);
+        $out.byte(b'\n');
+        $out.flush_debug();
+    }}
 }
 #[macro_export]
 macro_rules! kdbg {
