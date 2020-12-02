@@ -1,18 +1,19 @@
 use super::Monoid;
 
-pub struct LazySegTree<S, F, Map> {
-    ss: Box<[S]>,
-    fs: Box<[F]>,
-    map: Map,
+pub trait Map<T> {
+    fn map(&self, x: T) -> T;
 }
-impl<S: Monoid, F: Monoid, Map: Fn(&F, &S) -> S> LazySegTree<S, F, Map> {
-    pub fn new(n: usize, map: Map) -> Self {
+pub struct LazySegTree<T, F> {
+    ss: Box<[T]>,
+    fs: Box<[F]>,
+}
+impl<T: Monoid, F: Monoid + Map<T>> LazySegTree<T, F> {
+    pub fn new(n: usize) -> Self {
         use std::iter::repeat_with;
         let len = 2 * n.next_power_of_two();
         Self {
-            ss: repeat_with(S::id).take(len).collect(),
+            ss: repeat_with(T::id).take(len).collect(),
             fs: repeat_with(F::id).take(len).collect(),
-            map,
         }
     }
     fn len(&self) -> usize {
@@ -24,22 +25,22 @@ impl<S: Monoid, F: Monoid, Map: Fn(&F, &S) -> S> LazySegTree<S, F, Map> {
             let p = i >> k;
             let l = 2 * p;
             let r = 2 * p + 1;
-            self.ss[l] = (self.map)(&self.fs[p], &self.ss[l]);
-            self.ss[r] = (self.map)(&self.fs[p], &self.ss[r]);
+            self.ss[l] = self.fs[p].map(std::mem::replace(&mut self.ss[l], T::id()));
+            self.ss[r] = self.fs[p].map(std::mem::replace(&mut self.ss[r], T::id()));
             self.fs[l] = self.fs[p].op(&self.fs[l]);
             self.fs[r] = self.fs[p].op(&self.fs[r]);
             self.fs[p] = F::id();
         }
     }
-    pub fn prod(&mut self, l: usize, r: usize) -> S {
+    pub fn prod(&mut self, l: usize, r: usize) -> T {
         assert!(l <= r);
         assert!(r <= self.len());
         let mut l = l + self.len();
         let mut r = r + self.len();
         self.propagate(l >> l.trailing_zeros());
         self.propagate((r >> r.trailing_zeros()) - 1);
-        let mut lv = S::id();
-        let mut rv = S::id();
+        let mut lv = T::id();
+        let mut rv = T::id();
         while l < r {
             if l % 2 == 1 {
                 lv = lv.op(&self.ss[l]);
@@ -54,7 +55,7 @@ impl<S: Monoid, F: Monoid, Map: Fn(&F, &S) -> S> LazySegTree<S, F, Map> {
         }
         lv.op(&rv)
     }
-    pub fn set(&mut self, i: usize, v: S) {
+    pub fn set(&mut self, i: usize, v: T) {
         let mut i = i + self.len();
         self.propagate(i);
         self.ss[i] = v;
@@ -75,13 +76,13 @@ impl<S: Monoid, F: Monoid, Map: Fn(&F, &S) -> S> LazySegTree<S, F, Map> {
         while li < ri {
             if li % 2 == 1 {
                 self.fs[li] = f.op(&self.fs[li]);
-                self.ss[li] = (self.map)(f, &self.ss[li]);
+                self.ss[li] = f.map(std::mem::replace(&mut self.ss[li], T::id()));
                 li += 1;
             }
             if ri % 2 == 1 {
                 ri -= 1;
                 self.fs[ri] = f.op(&self.fs[ri]);
-                self.ss[ri] = (self.map)(f, &self.ss[ri]);
+                self.ss[ri] = f.map(std::mem::replace(&mut self.ss[ri], T::id()));
             }
             li /= 2;
             ri /= 2;
@@ -103,20 +104,20 @@ impl<S: Monoid, F: Monoid, Map: Fn(&F, &S) -> S> LazySegTree<S, F, Map> {
     }
 }
 
-impl<S: Monoid + Clone, F: Monoid, Map: Fn(&F, &S) -> S> LazySegTree<S, F, Map> {
-    pub fn from_slice(a: &[S], map: Map) -> Self {
-        use std::iter::repeat_with;
-        let n = a.len();
-        let len = 2 * n.next_power_of_two();
-        let mut ss: Vec<_> = repeat_with(S::id).take(n).collect();
-        ss.extend_from_slice(a);
+impl<T: Monoid, F: Monoid + Map<T>> std::iter::FromIterator<T> for LazySegTree<T, F> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut ss: Vec<_> = iter.into_iter().collect();
+        let iter_n = ss.len();
+        let n = iter_n.next_power_of_two();
+        ss.splice(..0, std::iter::repeat_with(T::id).take(n));
+        ss.extend(std::iter::repeat_with(T::id).take(n - iter_n));
+        debug_assert_eq!(ss.len(), 2 * n);
         for i in (1..n).rev() {
             ss[i] = ss[2 * i].op(&ss[2 * i + 1]);
         }
         Self {
             ss: ss.into(),
-            fs: repeat_with(F::id).take(len).collect(),
-            map,
+            fs: std::iter::repeat_with(F::id).take(2 * n).collect(),
         }
     }
 }

@@ -1,7 +1,7 @@
 use super::*;
 use crate::random::Pcg;
 use fenwick_tree::FenwickTree;
-use lazy_seg_tree::LazySegTree;
+use lazy_seg_tree::{Map, LazySegTree};
 use sparse_table::SparseTable;
 use wavelet_matrix::WaveletMatrix;
 
@@ -122,9 +122,14 @@ fn lazy_seg_tree_range_add_range_max() {
             Max(self.0.max(other.0))
         }
     }
+    impl Map<Max> for Add {
+        fn map(&self, x: Max) -> Max {
+            Max(self.0 + x.0)
+        }
+    }
     const N: usize = 20;
     let mut rand = Pcg::new(1818);
-    let mut lst = LazySegTree::new(N, |max: &Add, add: &Max| Max(max.0 + add.0));
+    let mut lst = LazySegTree::<Max, Add>::new(N);
     let mut a = vec![0; N];
     for i in 0..30 {
         if i % 3 == 0 {
