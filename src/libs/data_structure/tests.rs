@@ -1,7 +1,7 @@
 use super::*;
 use crate::random::Pcg;
 use fenwick_tree::FenwickTree;
-use lazy_seg_tree::{Map, LazySegTree};
+use lazy_seg_tree::{LazySegTree, Map};
 use sparse_table::SparseTable;
 use wavelet_matrix::WaveletMatrix;
 
