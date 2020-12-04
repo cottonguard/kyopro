@@ -21,7 +21,7 @@ impl<M: Modulo> Fact<M> {
     }
     pub fn perm(&self, n: usize, k: usize) -> ModInt<M> {
         if n >= k {
-            self.fact(n) / self.fact(k)
+            self.fact(n) / self.fact(n - k)
         } else {
             ModInt::new(0)
         }
