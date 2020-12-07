@@ -60,45 +60,39 @@ impl<M: Modulo> ops::Neg for ModInt<M> {
         Self::new(if self.0 == 0 { 0 } else { M::modulo() - self.0 })
     }
 }
-impl<M: Modulo> ops::AddAssign for ModInt<M> {
-    fn add_assign(&mut self, rhs: Self) {
-        self.0 += rhs.0;
-        if self.0 >= M::modulo() {
-            self.0 -= M::modulo();
-        }
+impl<M: Modulo> ops::Add for ModInt<M> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        let s = self.0 + rhs.0;
+        Self::new(if s < M::modulo() { s } else { s - M::modulo() })
     }
 }
-impl<M: Modulo> ops::SubAssign for ModInt<M> {
-    fn sub_assign(&mut self, rhs: Self) {
-        self.0 = if self.0 >= rhs.0 {
+impl<M: Modulo> ops::Sub for ModInt<M> {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self {
+        Self::new(if self.0 >= rhs.0 {
             self.0 - rhs.0
         } else {
-            M::modulo() - self.0 - rhs.0
-        }
+            M::modulo() + self.0 - rhs.0
+        })
     }
 }
-impl<M: Modulo> ops::MulAssign for ModInt<M> {
-    fn mul_assign(&mut self, rhs: Self) {
-        self.0 = (self.0 as u64 * rhs.0 as u64 % M::modulo() as u64) as u32;
+impl<M: Modulo> ops::Mul for ModInt<M> {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self {
+        Self::new((self.0 as u64 * rhs.0 as u64 % M::modulo() as u64) as u32)
     }
 }
-impl<M: Modulo> ops::DivAssign for ModInt<M> {
-    fn div_assign(&mut self, rhs: Self) {
+impl<M: Modulo> ops::Div for ModInt<M> {
+    type Output = Self;
+    fn div(self, rhs: Self) -> Self {
         assert_ne!(rhs.get(), 0);
-        *self *= rhs.inv();
+        self * rhs.inv()
     }
 }
 macro_rules! op_impl {
     ($($Op:ident $op:ident $OpAssign:ident $op_assign:ident)*) => {
-        $(impl<M: Modulo> ops::$Op for ModInt<M> {
-            type Output = Self;
-            fn $op(self, rhs: Self) -> Self {
-                let mut res = self;
-                ops::$OpAssign::$op_assign(&mut res, rhs);
-                res
-            }
-        }
-        impl<M: Modulo> ops::$Op<&Self> for ModInt<M> {
+        $(impl<M: Modulo> ops::$Op<&Self> for ModInt<M> {
             type Output = Self;
             fn $op(self, rhs: &Self) -> Self {
                 self.$op(*rhs)
@@ -114,6 +108,11 @@ macro_rules! op_impl {
             type Output = ModInt<M>;
             fn $op(self, rhs: &ModInt<M>) -> ModInt<M> {
                 (*self).$op(*rhs)
+            }
+        }
+        impl<M: Modulo> ops::$OpAssign for ModInt<M> {
+            fn $op_assign(&mut self, rhs: Self) {
+                *self = ops::$Op::$op(*self, rhs);
             }
         }
         impl<M: Modulo> ops::$OpAssign<&ModInt<M>> for ModInt<M> {

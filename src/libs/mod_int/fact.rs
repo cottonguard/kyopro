@@ -30,11 +30,7 @@ impl<M: Modulo> Fact<M> {
         for i in 2..=n {
             finv[i] = inv[i] * finv[i - 1];
         }
-        Self {
-            f,
-            finv,
-            inv,
-        }
+        Self { f, finv, inv }
     }
     pub fn inv(&self, x: usize) -> ModInt<M> {
         self.inv[x]
@@ -60,4 +56,3 @@ impl<M: Modulo> Fact<M> {
         }
     }
 }
-
