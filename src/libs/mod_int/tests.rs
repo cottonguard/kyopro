@@ -39,3 +39,12 @@ fn binom() {
         }
     }
 }
+
+#[test]
+fn mod_inv_table() {
+    const N: usize = 100;
+    let tab = fact::mod_inv_table::<Mod998244353>(N);
+    for x in 1..=N {
+        assert_eq!(ModInt::from(x) * tab[x], ModInt::new(1));
+    }
+}
