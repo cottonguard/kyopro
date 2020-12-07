@@ -54,7 +54,6 @@ mod tests {
             let mut a: Vec<_> = (0..50).map(|_| rand.next_u32() % M).collect();
             let n = rand.next_u32() as usize % N;
             super::nth_element(&mut a, n);
-            eprintln!("{} {:?}", n, a);
             for i in 0..n {
                 assert!(a[i] <= a[n]);
             }
