@@ -1,3 +1,4 @@
+use std::{cmp, fmt, marker::PhantomData, ops};
 pub type Mint = ModInt<Mod998244353>;
 pub fn mint(x: u32) -> Mint {
     ModInt::new(x)
@@ -27,7 +28,6 @@ impl Modulo for VarMod {
         VAR_MOD.load(atomic::Ordering::Relaxed)
     }
 }
-use std::{fmt, marker::PhantomData, ops};
 pub struct ModInt<M>(u32, PhantomData<M>);
 impl<M: Modulo> ModInt<M> {
     pub fn new(x: u32) -> Self {
@@ -192,19 +192,19 @@ impl<M: Modulo> Default for ModInt<M> {
         Self::new(0)
     }
 }
-impl<M> std::cmp::PartialEq for ModInt<M> {
+impl<M> cmp::PartialEq for ModInt<M> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
-impl<M> std::cmp::Eq for ModInt<M> {}
-impl<M> std::cmp::PartialOrd for ModInt<M> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+impl<M> cmp::Eq for ModInt<M> {}
+impl<M> cmp::PartialOrd for ModInt<M> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         self.0.partial_cmp(&other.0)
     }
 }
-impl<M> std::cmp::Ord for ModInt<M> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+impl<M> cmp::Ord for ModInt<M> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.0.cmp(&other.0)
     }
 }
