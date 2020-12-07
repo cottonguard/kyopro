@@ -44,9 +44,18 @@ fn binom() {
 }
 
 #[test]
+fn fact_inv() {
+    const N: usize = 100;
+    let f = fact::Fact::<Mod998244353>::new(N);
+    for x in 1..=N {
+        assert_eq!(f.fact(x) * f.fact_inv(x), ModInt::new(1));
+    }
+}
+
+#[test]
 fn mod_inv_table() {
     const N: usize = 100;
-    let tab = fact::mod_inv_table::<Mod998244353>(N);
+    let tab = precalc::mod_inv_table::<Mod998244353>(N);
     for x in 1..=N {
         assert_eq!(ModInt::from(x) * tab[x], ModInt::new(1));
     }
