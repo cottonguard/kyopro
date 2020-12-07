@@ -1,10 +1,10 @@
 use super::*;
 
 pub trait PrimitiveRoot: Modulo {
-    fn primitive_root() -> i32;
+    fn primitive_root() -> u32;
 }
 impl PrimitiveRoot for Mod998244353 {
-    fn primitive_root() -> i32 {
+    fn primitive_root() -> u32 {
         3
     }
 }
@@ -23,7 +23,7 @@ pub fn dft<M: PrimitiveRoot>(a: &mut [ModInt<M>], inv: bool) {
     w.push(ModInt::new(1));
     for m in (1..).map(|i| 1 << i).take_while(|m| *m <= n) {
         let neg1 = M::modulo() - 1;
-        let s = neg1 / m as i32;
+        let s = neg1 / m as u32;
         let w1 = if inv { pr.pow(neg1 - s) } else { pr.pow(s) };
         w.resize(m / 2, ModInt::new(0));
         for i in (0..m / 4).rev() {
@@ -39,7 +39,7 @@ pub fn dft<M: PrimitiveRoot>(a: &mut [ModInt<M>], inv: bool) {
         }
     }
     if inv {
-        let d = ModInt::new(n as i32).inv();
+        let d = ModInt::new(n as u32).inv();
         for a in a {
             *a *= d;
         }
