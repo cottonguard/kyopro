@@ -1,7 +1,7 @@
 mod bisect;
-mod permutation;
 mod nth_element;
+mod permutation;
 
 pub use bisect::*;
-pub use permutation::*;
 pub use nth_element::*;
+pub use permutation::*;
