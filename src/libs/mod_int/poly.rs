@@ -1,4 +1,5 @@
 // wip!!!!!!!!
+use super::{dft::dft, Mod998244353, ModInt};
 use std::ops;
 type Mint = ModInt<Mod998244353>;
 #[derive(Clone)]
@@ -62,13 +63,6 @@ impl ops::Neg for Poly {
         for a in &mut *self {
             *a = -*a;
         }
-        self
-    }
-}
-impl ops::Mul<Poly> for Poly {
-    type Output = Poly;
-    fn mul(mut self, mut rhs: Self) -> Self {
-        convolution(&mut self.0, &mut rhs.0);
         self
     }
 }
