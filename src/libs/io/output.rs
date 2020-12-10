@@ -1,51 +1,75 @@
 use std::{io::prelude::*, mem::MaybeUninit, ptr, slice, str};
-pub trait Output: Write + Sized {
-    fn bytes(&mut self, buf: &[u8]) {
-        self.write_all(buf).unwrap();
+
+pub struct KOutput<W: Write> {
+    dest: W,
+    delim: bool,
+}
+impl<W: Write> KOutput<W> {
+    pub fn new(dest: W) -> Self {
+        Self { dest, delim: false }
     }
-    fn output<T: OutputItem>(&mut self, x: T) {
-        x.output(self);
+    pub fn bytes(&mut self, s: &[u8]) {
+        self.dest.write_all(s).unwrap();
     }
-    fn byte(&mut self, b: u8) {
+    pub fn byte(&mut self, b: u8) {
         self.bytes(slice::from_ref(&b));
     }
-    fn seq<T: OutputItem, I: IntoIterator<Item = T>>(&mut self, iter: I, delim: u8) {
-        let mut iter = iter.into_iter();
-        if let Some(x) = iter.next() {
+    pub fn output<T: OutputItem>(&mut self, x: T) {
+        if self.delim {
+            self.byte(b' ');
+        }
+        self.delim = true;
+        x.output(self);
+    }
+    pub fn ln(&mut self) {
+        self.delim = false;
+        self.byte(b'\n');
+        self.flush_debug();
+    }
+    pub fn inner(&mut self) -> &mut W {
+        &mut self.dest
+    }
+    pub fn seq<T: OutputItem, I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        for x in iter.into_iter() {
             self.output(x);
-            for x in iter {
-                self.byte(delim);
-                self.output(x);
-            }
         }
     }
-    fn flush_debug(&mut self) {
+    pub fn flush(&mut self) {
+        self.dest.flush().unwrap();
+    }
+    pub fn flush_debug(&mut self) {
         if cfg!(debug_assertions) {
-            self.flush().unwrap();
+            self.flush();
         }
     }
 }
-impl<W: Write + Sized> Output for W {}
 pub trait OutputItem {
-    fn output<O: Output>(self, dest: &mut O);
+    fn output<W: Write>(self, dest: &mut KOutput<W>);
 }
 impl OutputItem for &str {
-    fn output<O: Output>(self, dest: &mut O) {
+    fn output<W: Write>(self, dest: &mut KOutput<W>) {
         dest.bytes(self.as_bytes());
     }
 }
 impl OutputItem for char {
-    fn output<O: Output>(self, dest: &mut O) {
-        self.encode_utf8(&mut [0u8; 4]).output(dest);
+    fn output<W: Write>(self, dest: &mut KOutput<W>) {
+        self.encode_utf8(&mut [0; 4]).output(dest);
     }
 }
-impl OutputItem for () {
-    fn output<O: Output>(self, _dest: &mut O) {}
+macro_rules! output_fmt {
+    ($($T:ty)*) => {
+        $(impl OutputItem for $T {
+            fn output<W: Write>(self, dest: &mut KOutput<W>) {
+                write!(dest.inner(), "{}", self).unwrap();
+            }
+        })*
+    }
 }
-macro_rules! output_int_impl {
+output_fmt!(f32 f64);
+macro_rules! output_int {
     ($conv:ident; $U:ty; $($T:ty)*) => {
         $(impl OutputItem for $T {
-            fn output<O: Output>(self, dest: &mut O) {
+            fn output<W: Write>(self, dest: &mut KOutput<W>) {
                 let mut buf = MaybeUninit::<[u8; 20]>::uninit();
                 unsafe {
                     let ptr = buf.as_mut_ptr() as *mut u8;
@@ -55,14 +79,14 @@ macro_rules! output_int_impl {
             }
         }
         impl OutputItem for &$T {
-            fn output<O: Output>(self, dest: &mut O) {
+            fn output<W: Write>(self, dest: &mut KOutput<W>) {
                 (*self).output(dest);
             }
         })*
     };
 }
-output_int_impl!(i64_to_bytes; i64; isize i8 i16 i32 i64);
-output_int_impl!(u64_to_bytes; u64; usize u8 u16 u32 u64);
+output_int!(i64_to_bytes; i64; isize i8 i16 i32 i64);
+output_int!(u64_to_bytes; u64; usize u8 u16 u32 u64);
 static DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
     2021222324252627282930313233343536373839\
     4041424344454647484950515253545556575859\
@@ -105,29 +129,13 @@ unsafe fn u64_to_bytes(mut x: u64, buf: *mut u8, len: usize) -> usize {
 }
 #[macro_export]
 macro_rules! out {
-    ($out:expr, $arg:expr) => {{
-        $out.output($arg);
-    }};
-    ($out:expr, $first:expr, $($rest:expr),*) => {{
-        $out.output($first);
-        $out.byte(b' ');
-        out!($out, $($rest),*);
-    }}
+    ($out:expr, $($args:expr),*) => {{ $($out.output($args);)* }};
 }
 #[macro_export]
 macro_rules! outln {
-    ($out:expr) => {{
-        $out.byte(b'\n');
-        $out.flush_debug();
-    }};
+    ($out:expr) => { $out.ln(); };
     ($out:expr, $($args:expr),*) => {{
         out!($out, $($args),*);
         outln!($out);
     }}
-}
-#[macro_export]
-macro_rules! kdbg {
-    ($($v:expr),*) => {
-        if cfg!(debug_assertions) { dbg!($($v),*) } else { ($($v),*) }
-    }
 }

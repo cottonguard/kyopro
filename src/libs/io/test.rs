@@ -20,24 +20,27 @@ fn seq() {
 
 #[test]
 fn output_int() {
-    let mut out = Vec::<u8>::new();
+    let mut out = KOutput::new(Vec::<u8>::new());
     let mut out_fmt = Vec::<u8>::new();
     let mut x = 0;
     for i in 1..10 {
         x = 10 * x + i;
         let y = if i % 3 == 0 { -x } else { x };
         out.output(&y);
+        if i > 1 {
+            out_fmt.push(b' ');
+        }
         out_fmt.extend_from_slice(format!("{}", y).as_bytes());
     }
     // dbg!(String::from_utf8_lossy(&out));
-    assert_eq!(out, out_fmt);
+    assert_eq!(out.inner(), &out_fmt);
 }
 
 #[test]
 fn output_int_seq() {
     let a: Vec<_> = (-10..=10).collect();
-    let mut out = Vec::<u8>::new();
-    out.seq(&a, b' ');
+    let mut out = KOutput::new(Vec::<u8>::new());
+    out.seq(&a);
     let mut out_fmt = Vec::new();
     for (i, x) in a.into_iter().enumerate() {
         if i > 0 {
@@ -45,5 +48,5 @@ fn output_int_seq() {
         }
         out_fmt.extend_from_slice(format!("{}", x).as_bytes());
     }
-    assert_eq!(out, out_fmt);
+    assert_eq!(out.inner(), &out_fmt);
 }
