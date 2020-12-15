@@ -5,9 +5,26 @@ pub fn zeta_superset<T, F: Fn(&T, &T) -> T>(a: &mut [T], k: usize, f: F) {
         while s < 1 << k {
             a[s] = f(&a[s], &a[s | 1 << i]);
             s += 1;
-            if s & 1 << i != 0 {
-                s += 1 << i;
+            s += s & 1 << i;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn zeta_superset() {
+        let a = vec![3i32, 1, 4, 1, 5, 9, 2, 6];
+        let mut zeta = a.clone();
+        super::zeta_superset(&mut zeta, 3, |x, y| x + y);
+        let mut naive = vec![0; 8];
+        for s in 0..1 << 3 {
+            for t in 0..1 << 3 {
+                if s | t == t {
+                    naive[s] += a[t];
+                }
             }
         }
+        assert_eq!(zeta, naive);
     }
 }
