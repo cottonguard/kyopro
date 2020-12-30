@@ -220,8 +220,6 @@ impl<M> fmt::Display for ModInt<M> {
 }
 impl<M> fmt::Debug for ModInt<M> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("ModInt(")?;
-        self.0.fmt(f)?;
-        f.pad(")")
+        self.0.fmt(f)
     }
 }
