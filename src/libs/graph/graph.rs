@@ -1,3 +1,4 @@
+use std::ops;
 pub struct Graph(LabeledGraph<()>);
 impl Graph {
     pub fn builder(n: usize) -> GraphBuilder {
@@ -7,16 +8,24 @@ impl Graph {
         self.0.len()
     }
 }
-impl std::ops::Index<usize> for Graph {
+impl ops::Index<usize> for Graph {
     type Output = [usize];
     fn index(&self, u: usize) -> &Self::Output {
         unsafe { std::mem::transmute(self.0.index(u)) }
+    }
+}
+impl ops::IndexMut<usize> for Graph {
+    fn index_mut(&mut self, u: usize) -> &mut Self::Output {
+        unsafe { std::mem::transmute(self.0.index_mut(u)) }
     }
 }
 pub struct GraphBuilder(LabeledGraphBuilder<()>);
 impl GraphBuilder {
     pub fn edge(&mut self, u: usize, v: usize) {
         self.0.edge(u, v, ());
+    }
+    pub fn bi_edge(&mut self, u: usize, v: usize) {
+        self.0.bi_edge(u, v, ());
     }
     pub fn build(&mut self) -> Graph {
         Graph(self.0.build())
@@ -37,10 +46,15 @@ impl<T: Clone> LabeledGraph<T> {
         self.heads.len() - 1
     }
 }
-impl<T> std::ops::Index<usize> for LabeledGraph<T> {
+impl<T> ops::Index<usize> for LabeledGraph<T> {
     type Output = [(usize, T)];
     fn index(&self, u: usize) -> &Self::Output {
         &self.edges[self.heads[u]..self.heads[u + 1]]
+    }
+}
+impl<T> ops::IndexMut<usize> for LabeledGraph<T> {
+    fn index_mut(&mut self, u: usize) -> &mut Self::Output {
+        &mut self.edges[self.heads[u]..self.heads[u + 1]]
     }
 }
 pub struct LabeledGraphBuilder<T> {
@@ -51,6 +65,10 @@ impl<T: Clone> LabeledGraphBuilder<T> {
     pub fn edge(&mut self, u: usize, v: usize, l: T) {
         self.nodes.push(((v, l), self.heads[u]));
         self.heads[u] = self.nodes.len() - 1;
+    }
+    pub fn bi_edge(&mut self, u: usize, v: usize, l: T) {
+        self.edge(u, v, l.clone());
+        self.edge(v, u, l);
     }
     pub fn build(&mut self) -> LabeledGraph<T> {
         let mut edges = Vec::with_capacity(self.nodes.len());
@@ -67,5 +85,65 @@ impl<T: Clone> LabeledGraphBuilder<T> {
             edges: edges.into(),
             heads: heads.into(),
         }
+    }
+}
+
+impl Graph {
+    pub fn edges(&self) -> Edges {
+        Edges(self.0.edges())
+    }
+}
+pub struct Edges<'a>(LabeledEdges<'a, ()>);
+impl<'a> Iterator for Edges<'a> {
+    type Item = (usize, usize);
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(u, v, _)| (u, v))
+    }
+}
+impl<T> LabeledGraph<T> {
+    pub fn edges(&self) -> LabeledEdges<T> {
+        LabeledEdges {
+            g: self,
+            u: 0,
+            i: 0,
+        }
+    }
+}
+pub struct LabeledEdges<'a, T> {
+    g: &'a LabeledGraph<T>,
+    u: usize,
+    i: usize,
+}
+impl<'a, T> Iterator for LabeledEdges<'a, T> {
+    type Item = (usize, usize, &'a T);
+    fn next(&mut self) -> Option<Self::Item> {
+        self.g.edges.get(self.i).map(|(v, l)| {
+            while self.g.heads[self.u + 1] == self.i {
+                self.u += 1;
+            }
+            let e = (self.u, *v, l);
+            self.i += 1;
+            e
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn edges() {
+        const N: usize = 10;
+        let mut g = Graph::builder(N);
+        g.edge(1, 2);
+        g.edge(3, 4);
+        g.edge(1, 5);
+        g.edge(6, 3);
+        g.edge(1, 3);
+        let g = g.build();
+        let mut es: Vec<_> = g.edges().collect();
+        es.sort();
+        assert_eq!(es, [(1, 2), (1, 3), (1, 5), (3, 4), (6, 3)]);
     }
 }
