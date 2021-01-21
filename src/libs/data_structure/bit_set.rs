@@ -32,7 +32,7 @@ impl BitSet {
     fn conv_range<R: RangeBounds<usize>>(range: R) -> (usize, usize) {
         let l = match range.start_bound() {
             Bound::Included(i) => *i,
-            Bound::Excluded(i) => i.saturating_sub(1),
+            Bound::Excluded(i) => i + 1,
             Bound::Unbounded => 0,
         };
         let r = match range.end_bound() {
