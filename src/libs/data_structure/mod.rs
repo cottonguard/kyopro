@@ -4,6 +4,7 @@ pub mod fenwick_tree;
 pub mod lazy_seg_tree;
 mod segment_tree;
 pub use segment_tree::*;
+pub mod bit_set;
 pub mod sparse_table;
 pub mod splay_tree;
 pub mod swag;
