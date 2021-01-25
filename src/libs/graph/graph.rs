@@ -11,6 +11,7 @@ impl Graph {
 impl ops::Index<usize> for Graph {
     type Output = [usize];
     fn index(&self, u: usize) -> &Self::Output {
+        // https://rust-lang.github.io/unsafe-code-guidelines/layout/structs-and-tuples.html#structs-with-1-zst-fields
         unsafe { std::mem::transmute(self.0.index(u)) }
     }
 }
