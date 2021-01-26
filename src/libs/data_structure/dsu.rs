@@ -69,7 +69,7 @@ impl<T> DsuWithData<T> {
 }
 impl<T> std::iter::FromIterator<T> for DsuWithData<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let data: Vec<_> = iter.into_iter().map(|v| ManuallyDrop::new(v)).collect();
+        let data: Vec<_> = iter.into_iter().map(ManuallyDrop::new).collect();
         Self {
             inner: Dsu::new(data.len()),
             data,

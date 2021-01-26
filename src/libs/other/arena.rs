@@ -5,6 +5,7 @@ impl<T> Arena<T> {
     pub fn new() -> Self {
         Self(RefCell::new((Vec::with_capacity(CHUNK_CAP), Vec::new())))
     }
+    #[allow(clippy::mut_from_ref)]
     pub fn alloc(&self, x: T) -> &mut T {
         let mut r = self.0.borrow_mut();
         if r.0.len() >= r.0.capacity() {

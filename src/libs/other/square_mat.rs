@@ -1,10 +1,10 @@
 use std::{
-    mem::{self, MaybeUninit},
+    mem::{self, MaybeUninit, ManuallyDrop},
     ops::{Neg, Add, AddAssign, Sub, SubAssign, Deref, DerefMut, Mul, MulAssign},
 };
 pub const N: usize = 3;
 #[repr(transparent)]
-#[derive(Copy, Clone, Default, Hash, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Debug)]
 pub struct SquareMat<T>([[T; N]; N]);
 impl<T: Copy + From<i8>> SquareMat<T> {
     pub fn zero() -> Self {
@@ -19,6 +19,7 @@ impl<T: Copy + From<i8>> SquareMat<T> {
     }
 }
 impl<T> SquareMat<T> {
+    #[allow(clippy::uninit_assumed_init)]
     pub fn uninit() -> SquareMat<MaybeUninit<T>> {
         unsafe { MaybeUninit::uninit().assume_init() }
     }
@@ -30,6 +31,18 @@ impl<T> SquareMat<T> {
             }
         }
         self
+    }
+    pub fn map<U, F: FnMut(T) -> U>(self, mut f: F) -> SquareMat<U> {
+        unsafe {
+            let mut a: SquareMat<ManuallyDrop<T>> = mem::transmute_copy(&self);
+            let mut res = SquareMat::uninit();
+            for i in 0..N {
+                for j in 0..N {
+                    res[i][j] = MaybeUninit::new(f(ManuallyDrop::take(&mut a[i][j])));
+                }
+            }
+            res.assume_init()
+        }
     }
 }
 impl<T> SquareMat<MaybeUninit<T>> {
@@ -148,5 +161,29 @@ impl<T: Copy + Add<Output = T> + Mul<Output = T>> Mul<[T; N]> for SquareMat<T> {
 impl<T: Copy + Add<Output = T> + Mul<Output = T>> MulAssign for SquareMat<T> {
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
+    }
+}
+impl<T> From<[[T; N]; N]> for SquareMat<T> {
+    fn from(a: [[T; N]; N]) -> Self {
+        Self(a)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pow() {
+        let (sin, cos) = (std::f64::consts::PI / 13.).sin_cos();
+        let a: SquareMat<_> = [[cos, -sin, 0.], [sin, cos, 0.], [0., 0., 1.]].into();
+        let b = a.pow(26u64);
+        let id = SquareMat::<f64>::id();
+        let c = b - id;
+        for i in 0..N {
+            for j in 0..N {
+                assert!(c[i][j].abs() < 1e-10);
+            }
+        }
     }
 }

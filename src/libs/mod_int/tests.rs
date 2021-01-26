@@ -1,6 +1,7 @@
 use super::*;
 
 #[test]
+#[allow(clippy::eq_op)]
 fn mod_int() {
     type Mint = ModInt<Mod1e9p7>;
     let x = Mint::new(57577);

@@ -8,8 +8,8 @@ pub fn strongly_connected_components(g: &[Vec<usize>]) -> Vec<Vec<usize>> {
     }
     let mut comps = Vec::new();
     let mut h = vec![Vec::new(); g.len()];
-    for u in 0..g.len() {
-        for &v in &g[u] {
+    for (u, adj) in g.iter().enumerate() {
+        for &v in adj {
             h[v].push(u);
         }
     }

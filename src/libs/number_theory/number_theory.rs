@@ -29,8 +29,7 @@ pub fn primes(n: usize) -> Vec<usize> {
 
 pub fn prime_count(n: usize) -> usize {
     let sn = (n as f64).sqrt().round() as usize;
-    let mut ps = Vec::new();
-    ps.push(1);
+    let mut ps = vec![1];
     let mut sieve = vec![true; sn + 1];
     for i in 2..=sn {
         if sieve[i] {

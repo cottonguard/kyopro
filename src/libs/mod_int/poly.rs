@@ -20,7 +20,7 @@ impl Poly {
         let mut b = Self(Vec::with_capacity(2 * cap));
         let mut len = 1;
         while len < n {
-            len = 2 * len;
+            len *= 2;
             x_tmp.0.clear();
             x_tmp.0.extend_from_slice(&x);
             b.0.clear();

@@ -12,12 +12,12 @@ impl ops::Index<usize> for Graph {
     type Output = [usize];
     fn index(&self, u: usize) -> &Self::Output {
         // https://rust-lang.github.io/unsafe-code-guidelines/layout/structs-and-tuples.html#structs-with-1-zst-fields
-        unsafe { std::mem::transmute(self.0.index(u)) }
+        unsafe { &*(self.0.index(u) as *const _ as *const _) }
     }
 }
 impl ops::IndexMut<usize> for Graph {
     fn index_mut(&mut self, u: usize) -> &mut Self::Output {
-        unsafe { std::mem::transmute(self.0.index_mut(u)) }
+        unsafe { &mut *(self.0.index_mut(u) as *mut _ as *mut _) }
     }
 }
 pub struct GraphBuilder(LabeledGraphBuilder<()>);
