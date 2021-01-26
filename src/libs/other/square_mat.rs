@@ -19,9 +19,8 @@ impl<T: Copy + From<i8>> SquareMat<T> {
     }
 }
 impl<T> SquareMat<T> {
-    #[allow(clippy::uninit_assumed_init)]
     pub fn uninit() -> SquareMat<MaybeUninit<T>> {
-        unsafe { MaybeUninit::uninit().assume_init() }
+        unsafe { SquareMat(MaybeUninit::uninit().assume_init()) }
     }
     pub fn transpose(mut self) -> Self {
         for i in 0..N {
