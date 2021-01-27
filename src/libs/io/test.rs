@@ -11,10 +11,10 @@ fn input() {
 }
 
 #[test]
-fn seq() {
+fn collect() {
     let s = b"1  2 3\n4 5";
     let mut kin = KInput::new(s as &[u8]);
-    let a: Vec<i32> = kin.seq(5);
+    let a: Vec<i32> = kin.collect(5);
     assert_eq!(a, [1, 2, 3, 4, 5]);
 }
 

@@ -5,6 +5,7 @@ use std::{
     mem::{self, MaybeUninit},
     str,
 };
+
 pub trait Input {
     fn bytes(&mut self) -> &[u8];
     fn str(&mut self) -> &str {
@@ -16,8 +17,20 @@ pub trait Input {
     fn iter<T: InputItem>(&mut self) -> Iter<T, Self> {
         Iter(self, PhantomData)
     }
-    fn seq<T: InputItem, B: FromIterator<T>>(&mut self, n: usize) -> B {
+    fn collect<T: InputItem, B: FromIterator<T>>(&mut self, n: usize) -> B {
         self.iter().take(n).collect()
+    }
+    fn map<T: InputItem, U, F: FnMut(T) -> U, B: FromIterator<U>>(
+        &mut self,
+        n: usize,
+        f: F,
+    ) -> B {
+        self.iter().take(n).map(f).collect()
+    }
+}
+impl<I: Input> Input for &mut I {
+    fn bytes(&mut self) -> &[u8] {
+        (**self).bytes()
     }
 }
 pub struct KInput<R> {
@@ -43,9 +56,9 @@ impl<R: Read> KInput<R> {
         } else if self.len >= self.buf.len() {
             self.buf.resize(2 * self.buf.len(), 0);
         }
-        let read = self.src.read(&mut self.buf[self.len..]).unwrap();
-        self.len += read;
-        read
+        let n = self.src.read(&mut self.buf[self.len..]).unwrap();
+        self.len += n;
+        n
     }
 }
 impl<R: Read> Input for KInput<R> {
@@ -85,19 +98,19 @@ impl InputItem for Vec<u8> {
         src.bytes().to_owned()
     }
 }
-macro_rules! from_str_impl {
-    { $($T:ty)* } => {
-        $(impl InputItem for $T {
+macro_rules! from_str {
+    ($($T:ty)*) => {$(
+        impl InputItem for $T {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
                 src.str().parse::<$T>().unwrap()
             }
-        })*
-    }
+        }
+    )*}
 }
-from_str_impl! { String char bool f32 f64 }
-macro_rules! parse_int_impl {
-    { $($I:ty: $U:ty)* } => {
-        $(impl InputItem for $I {
+from_str!(String char bool f32 f64);
+macro_rules! parse_int {
+    ($($I:ty: $U:ty)*) => {$(
+        impl InputItem for $I {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
                 let f = |s: &[u8]| s.iter().fold(0, |x, b| 10 * x + (b & 0xf) as $I);
                 let s = src.bytes();
@@ -108,36 +121,35 @@ macro_rules! parse_int_impl {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
                 src.bytes().iter().fold(0, |x, b| 10 * x + (b & 0xf) as $U)
             }
-        })*
-    };
+        }
+    )*}
 }
-parse_int_impl! { isize:usize i8:u8 i16:u16 i32:u32 i64:u64 i128:u128 }
-macro_rules! tuple_impl {
+parse_int!(isize:usize i8:u8 i16:u16 i32:u32 i64:u64 i128:u128);
+macro_rules! tuple {
     ($H:ident $($T:ident)*) => {
         impl<$H: InputItem, $($T: InputItem),*> InputItem for ($H, $($T),*) {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
                 ($H::input(src), $($T::input(src)),*)
             }
         }
-        tuple_impl!($($T)*);
+        tuple!($($T)*);
     };
     () => {}
 }
-tuple_impl!(A B C D E F G);
-macro_rules! array_impl {
-    { $($N:literal)* } => {
-        $(impl<T: InputItem> InputItem for [T; $N] {
+tuple!(A B C D E F G);
+macro_rules! array {
+    ($($N:literal)*) => {$(
+        impl<T: InputItem> InputItem for [T; $N] {
             fn input<I: Input + ?Sized>(src: &mut I) -> Self {
-                let mut arr = MaybeUninit::uninit();
-                let ptr = arr.as_mut_ptr() as *mut T;
                 unsafe {
-                    for i in 0..$N {
-                        ptr.add(i).write(src.input());
+                    let mut arr: [MaybeUninit<T>; $N] = MaybeUninit::uninit().assume_init();
+                    for elem in &mut arr {
+                        *elem = MaybeUninit::new(src.input());
                     }
-                    arr.assume_init()
+                    mem::transmute_copy(&arr)
                 }
             }
-        })*
-    };
+        }
+    )*}
 }
-array_impl! { 1 2 3 4 5 6 7 8 }
+array!(1 2 3 4 5 6 7 8);
