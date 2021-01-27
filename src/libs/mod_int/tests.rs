@@ -3,12 +3,13 @@ use super::*;
 #[test]
 #[allow(clippy::eq_op)]
 fn mod_int() {
-    type Mint = ModInt<Mod1e9p7>;
+    type Mint = ModInt<Mod1000000007>;
     let x = Mint::new(57577);
     assert_eq!(x / x, Mint::new(1));
     assert_eq!(x.half() * Mint::new(2), x);
     assert_eq!(x.pow((Mint::modulo() - 1) as u64 * 1234567), Mint::new(1));
     assert_eq!(x.pow((Mint::modulo() - 1) as i64 * -1234567), Mint::new(1));
+    assert_eq!(x.pow(1357) * x.pow(-1356), x);
     assert_eq!(Mint::from(-1000) + Mint::from(1000), Mint::new(0));
     assert_eq!(
         Mint::from(-(1i64 << 60)) + Mint::from(1u64 << 60),
@@ -29,7 +30,7 @@ fn var_mod() {
 #[test]
 fn binom() {
     const N: usize = 20;
-    let f = fact::Fact::<Mod1e9p7>::new(N);
+    let f = fact::Fact::<Mod1000000007>::new(N);
     let mut pascal = [[ModInt::new(0); N + 1]; N + 1];
     for i in 0..=N {
         pascal[i][0] = ModInt::new(1);
@@ -48,7 +49,7 @@ fn binom() {
 fn fact_inv() {
     const N: usize = 100;
     let f = fact::Fact::<Mod998244353>::new(N);
-    for x in 1..=N {
+    for x in 0..=N {
         assert_eq!(f.fact(x) * f.fact_inv(x), ModInt::new(1));
     }
 }

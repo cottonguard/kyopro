@@ -1,6 +1,6 @@
 use std::{
-    mem::{self, MaybeUninit, ManuallyDrop},
-    ops::{Neg, Add, AddAssign, Sub, SubAssign, Deref, DerefMut, Mul, MulAssign},
+    mem::{self, ManuallyDrop, MaybeUninit},
+    ops::{Add, AddAssign, Deref, DerefMut, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 pub const N: usize = 3;
 #[repr(transparent)]

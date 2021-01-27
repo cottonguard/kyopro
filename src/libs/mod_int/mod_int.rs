@@ -1,4 +1,4 @@
-use std::{cmp, fmt, marker::PhantomData, ops};
+use std::{cmp, fmt, marker::PhantomData, ops, sync::atomic};
 pub type Mint = ModInt<Mod998244353>;
 pub fn mint(x: u32) -> Mint {
     ModInt::new(x)
@@ -16,8 +16,7 @@ macro_rules! modulo_impl {
         })*
     };
 }
-modulo_impl!(Mod998244353 998244353 Mod1e9p7 1000000007);
-use std::sync::atomic;
+modulo_impl!(Mod998244353 998244353 Mod1000000007 1000000007);
 pub struct VarMod;
 static VAR_MOD: atomic::AtomicU32 = atomic::AtomicU32::new(0);
 pub fn set_var_mod(m: u32) {
@@ -28,7 +27,8 @@ impl Modulo for VarMod {
         VAR_MOD.load(atomic::Ordering::Relaxed)
     }
 }
-pub struct ModInt<M>(u32, PhantomData<M>);
+#[repr(transparent)]
+pub struct ModInt<M>(u32, PhantomData<*const M>);
 impl<M: Modulo> ModInt<M> {
     pub fn new(x: u32) -> Self {
         debug_assert!(x < M::modulo());
@@ -45,6 +45,7 @@ impl<M: Modulo> ModInt<M> {
         self.0
     }
     pub fn inv(self) -> Self {
+        assert_ne!(self, Self::new(0));
         self.pow(M::modulo() - 2)
     }
     pub fn half(self) -> Self {
@@ -86,7 +87,6 @@ impl<M: Modulo> ops::Mul for ModInt<M> {
 impl<M: Modulo> ops::Div for ModInt<M> {
     type Output = Self;
     fn div(self, rhs: Self) -> Self {
-        assert_ne!(rhs.get(), 0);
         self * rhs.inv()
     }
 }
