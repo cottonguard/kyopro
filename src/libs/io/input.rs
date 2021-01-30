@@ -20,11 +20,7 @@ pub trait Input {
     fn collect<T: InputItem, B: FromIterator<T>>(&mut self, n: usize) -> B {
         self.iter().take(n).collect()
     }
-    fn map<T: InputItem, U, F: FnMut(T) -> U, B: FromIterator<U>>(
-        &mut self,
-        n: usize,
-        f: F,
-    ) -> B {
+    fn map<T: InputItem, U, F: FnMut(T) -> U, B: FromIterator<U>>(&mut self, n: usize, f: F) -> B {
         self.iter().take(n).map(f).collect()
     }
 }

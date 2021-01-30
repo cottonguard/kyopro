@@ -4,6 +4,7 @@ pub mod low_link;
 pub mod max_flow;
 pub mod min_cost_flow;
 pub mod scc;
+pub mod tsort;
 
 use std::ops;
 pub struct Graph(LabeledGraph<()>);
