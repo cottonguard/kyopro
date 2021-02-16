@@ -5,7 +5,6 @@ where
     T: std::ops::Add<Output = T> + Ord + Default + Copy,
 {
     use std::{cmp::Ordering, collections::BinaryHeap};
-
     struct Node<T>(usize, T);
     impl<T: PartialEq> PartialEq for Node<T> {
         fn eq(&self, other: &Self) -> bool {
@@ -23,13 +22,12 @@ where
             other.1.cmp(&self.1)
         }
     }
-
     let mut dist = vec![None; g.len()];
     dist[s] = Some(T::default());
     let mut que = BinaryHeap::new();
     que.push(Node(s, T::default()));
     while let Some(Node(u, d)) = que.pop() {
-        if dist[u].map(|du| d > du).unwrap_or(false) {
+        if matches!(dist[u], Some(du) if d > du) {
             continue;
         }
         for &(v, w) in &g[u] {
