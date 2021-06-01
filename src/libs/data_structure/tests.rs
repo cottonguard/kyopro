@@ -1,5 +1,5 @@
 use super::*;
-use crate::random::Pcg;
+use crate::random::*;
 use fenwick_tree::FenwickTree;
 use lazy_seg_tree::{LazySegTree, Map};
 use sparse_table::SparseTable;
@@ -8,7 +8,7 @@ use wavelet_matrix::WaveletMatrix;
 #[test]
 fn sparse_table() {
     const N: usize = 19;
-    let mut rand = Pcg::new(11922960);
+    let mut rand = Pcg::seed_from_u64(11922960);
     let st: SparseTable<_> = (0..N).map(|_| rand.next_u32()).collect();
     for _ in 0..20 {
         let l = rand.next_u32() as usize % N;
@@ -21,7 +21,7 @@ fn sparse_table() {
 #[test]
 fn fenwick_tree_add() {
     const N: usize = 20;
-    let mut rand = Pcg::new(11922960);
+    let mut rand = Pcg::seed_from_u64(11922960);
     let mut ft = FenwickTree::new(N, || 0, |x, y| x + y);
     let mut a = vec![0; N];
     for i in 0..30 {
@@ -78,7 +78,7 @@ fn seg_tree_max() {
         }
     }
     const N: usize = 20;
-    let mut rand = Pcg::new(8181);
+    let mut rand = Pcg::seed_from_u64(8181);
     let mut a: Vec<_> = (0..N).map(|_| rand.next_u32()).collect();
     let mut st: SegmentTree<_> = a.iter().copied().collect();
     for i in 0..30 {
@@ -128,7 +128,7 @@ fn lazy_seg_tree_range_add_range_max() {
         }
     }
     const N: usize = 20;
-    let mut rand = Pcg::new(1818);
+    let mut rand = Pcg::seed_from_u64(1818);
     let mut lst = LazySegTree::<Max, Add>::new(N);
     let mut a = vec![0; N];
     for i in 0..30 {
@@ -155,7 +155,7 @@ fn wavelet_matrix_rank() {
     use std::iter;
     const N: usize = 1000;
     const K: usize = 50;
-    let mut rand = Pcg::new(1352);
+    let mut rand = Pcg::seed_from_u64(1352);
     let values: Vec<_> = iter::repeat_with(|| rand.next_u32()).take(K).collect();
     let mut cnt = [0; 100];
     let a: Vec<_> = iter::repeat_with(|| {

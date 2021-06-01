@@ -43,12 +43,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{graph::LabeledGraph, random::Pcg};
+    use crate::{graph::LabeledGraph, random::*};
     #[test]
     fn djikstra() {
         const N: usize = 13;
         const M: usize = 29;
-        let mut rand = Pcg::new(819);
+        let mut rand = Pcg::seed_from_u64(819);
 
         for _ in 0..10 {
             let mut g = LabeledGraph::builder(N);

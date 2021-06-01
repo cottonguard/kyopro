@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct FenwickTree<T, F, Z> {
     a: Vec<T>,
     f: F,
@@ -10,6 +11,9 @@ impl<T, F: Fn(&T, &T) -> T, Z: Fn() -> T> FenwickTree<T, F, Z> {
             f,
             z,
         }
+    }
+    pub fn len(&self) -> usize {
+        self.a.len() - 1
     }
     pub fn add(&mut self, mut i: usize, x: T) {
         i += 1;
@@ -26,6 +30,9 @@ impl<T, F: Fn(&T, &T) -> T, Z: Fn() -> T> FenwickTree<T, F, Z> {
             i -= i & (!i + 1);
         }
         s
+    }
+    pub fn sum_all(&self) -> T {
+        self.sum(self.len())
     }
     pub fn reset(&mut self) {
         for a in &mut self.a {

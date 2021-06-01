@@ -6,7 +6,9 @@ pub mod min_cost_flow;
 pub mod scc;
 pub mod tsort;
 
-use std::{mem::ManuallyDrop, ops};
+pub mod wip;
+
+use std::{fmt, mem::ManuallyDrop, ops};
 pub struct Graph(LabeledGraph<()>);
 impl Graph {
     pub fn builder(n: usize) -> GraphBuilder {
@@ -31,11 +33,21 @@ impl ops::IndexMut<usize> for Graph {
         unsafe { &mut *(self.0.index_mut(u) as *mut _ as *mut _) }
     }
 }
+impl fmt::Debug for Graph {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map()
+            .entries((0..self.len()).map(|u| (u, &self[u])))
+            .finish()
+    }
+}
 pub struct Edges<'a>(LabeledEdges<'a, ()>);
 impl<'a> Iterator for Edges<'a> {
     type Item = (usize, usize);
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|(u, v, _)| (u, v))
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 pub struct GraphBuilder(LabeledGraphBuilder<()>);
@@ -63,7 +75,7 @@ pub struct LabeledGraph<T> {
     edges: Box<[(usize, T)]>,
     heads: Box<[usize]>,
 }
-impl<T: Clone> LabeledGraph<T> {
+impl<T> LabeledGraph<T> {
     pub fn builder(n: usize) -> LabeledGraphBuilder<T> {
         LabeledGraphBuilder {
             nodes: Vec::new(),
@@ -92,6 +104,13 @@ impl<T> ops::IndexMut<usize> for LabeledGraph<T> {
         &mut self.edges[self.heads[u]..self.heads[u + 1]]
     }
 }
+impl<T: fmt::Debug> fmt::Debug for LabeledGraph<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map()
+            .entries((0..self.len()).map(|u| (u, &self[u])))
+            .finish()
+    }
+}
 pub struct LabeledEdges<'a, T> {
     g: &'a LabeledGraph<T>,
     u: usize,
@@ -100,13 +119,16 @@ pub struct LabeledEdges<'a, T> {
 impl<'a, T> Iterator for LabeledEdges<'a, T> {
     type Item = (usize, usize, &'a T);
     fn next(&mut self) -> Option<Self::Item> {
-        self.g.edges.get(self.i).map(|(v, l)| {
-            while self.g.heads[self.u + 1] == self.i {
-                self.u += 1;
-            }
-            self.i += 1;
-            (self.u, *v, l)
-        })
+        let (v, l) = self.g.edges.get(self.i)?;
+        while self.g.heads[self.u + 1] == self.i {
+            self.u += 1;
+        }
+        self.i += 1;
+        Some((self.u, *v, l))
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.g.edges.len();
+        (len, Some(len))
     }
 }
 pub struct LabeledGraphBuilder<T> {

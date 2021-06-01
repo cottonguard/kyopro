@@ -1,4 +1,10 @@
 pub mod arena;
+pub mod array_vec;
+pub mod bit;
+pub mod coord_comp;
+pub mod matrix;
 pub mod merge;
+pub mod rect_array;
+pub mod run_length;
 pub mod square_mat;
 pub mod zeta;

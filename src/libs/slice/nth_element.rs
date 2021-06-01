@@ -44,12 +44,12 @@ pub fn nth_element_by<T, F: FnMut(&T, &T) -> Ordering>(a: &mut [T], n: usize, mu
 mod tests {
     #[test]
     fn nth_element() {
-        use crate::random::Pcg;
+        use crate::random::*;
 
         const N: usize = 50;
         const M: u32 = 20;
         const T: usize = 100;
-        let mut rand = Pcg::new(1958);
+        let mut rand = Pcg::seed_from_u64(1958);
         for _ in 0..T {
             let mut a: Vec<_> = (0..50).map(|_| rand.next_u32() % M).collect();
             let n = rand.next_u32() as usize % N;

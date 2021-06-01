@@ -60,21 +60,39 @@ impl<T> std::ops::Deref for OnceInit<T> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct Ordered<T, U>(pub T, pub U);
-impl<T: Ord, U> PartialEq for Ordered<T, U> {
+#[derive(Clone, Copy, Debug, Hash)]
+struct CmpKey<T, U>(T, U);
+impl<T: PartialEq, U> PartialEq for CmpKey<T, U> {
     fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
+        self.0 == other.0
     }
 }
-impl<T: Ord, U> Eq for Ordered<T, U> {}
-impl<T: Ord, U> PartialOrd for Ordered<T, U> {
+impl<T: Eq, U> Eq for CmpKey<T, U> {}
+impl<T: PartialOrd, U> PartialOrd for CmpKey<T, U> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.0.partial_cmp(&other.0)
     }
 }
-impl<T: Ord, U> Ord for Ordered<T, U> {
+impl<T: Ord, U> Ord for CmpKey<T, U> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.cmp(&other.0)
+    }
+}
+
+#[derive(Clone, Copy, PartialOrd, Debug)]
+struct OrdF32(f32);
+impl PartialEq for OrdF32 {
+    fn eq(&self, other: &Self) -> bool {
+        if self.0.is_nan() {
+            other.0.is_nan()
+        } else {
+            self.0 == other.0
+        }
+    }
+}
+impl Eq for OrdF32 {}
+impl Ord for OrdF32 {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).expect("cmp failed")
     }
 }

@@ -1,43 +1,54 @@
-pub fn strongly_connected_components(g: &[Vec<usize>]) -> Vec<Vec<usize>> {
-    let mut ord = Vec::with_capacity(g.len());
-    let mut vis = vec![false; g.len()];
-    for u in 0..g.len() {
-        if !vis[u] {
-            dfs_f(g, u, &mut ord, &mut vis);
-        }
+pub fn strongly_connected_components(g: &[Vec<usize>]) -> (usize, Vec<usize>) {
+    let n = g.len();
+    Scc {
+        g,
+        stk: vec![],
+        ord: vec![0; n],
+        low: vec![0; n],
+        idx: 1,
+        comp_id: 0,
     }
-    let mut comps = Vec::new();
-    let mut h = vec![Vec::new(); g.len()];
-    for (u, adj) in g.iter().enumerate() {
-        for &v in adj {
-            h[v].push(u);
-        }
-    }
-    vis.iter_mut().for_each(|v| *v = false);
-    for u in ord.into_iter().rev() {
-        if !vis[u] {
-            let mut comp = Vec::new();
-            dfs_c(&h, u, &mut comp, &mut vis);
-            comps.push(comp);
-        }
-    }
-    comps
+    .run()
 }
-fn dfs_f(g: &[Vec<usize>], u: usize, ord: &mut Vec<usize>, vis: &mut [bool]) {
-    vis[u] = true;
-    for &v in &g[u] {
-        if !vis[v] {
-            dfs_f(g, v, ord, vis);
-        }
-    }
-    ord.push(u);
+struct Scc<'a> {
+    g: &'a [Vec<usize>],
+    stk: Vec<usize>,
+    ord: Vec<usize>,
+    low: Vec<usize>,
+    idx: usize,
+    comp_id: usize,
 }
-fn dfs_c(h: &[Vec<usize>], u: usize, comp: &mut Vec<usize>, vis: &mut [bool]) {
-    vis[u] = true;
-    comp.push(u);
-    for &v in &h[u] {
-        if !vis[v] {
-            dfs_c(h, v, comp, vis);
+impl<'a> Scc<'a> {
+    fn run(mut self) -> (usize, Vec<usize>) {
+        for r in 0..self.g.len() {
+            if self.ord[r] == 0 {
+                self.rec(r);
+            }
+        }
+        for c in &mut self.ord {
+            *c = (self.comp_id as isize + *c as isize) as usize;
+        }
+        (self.comp_id, self.ord)
+    }
+    fn rec(&mut self, u: usize) {
+        self.ord[u] = self.idx;
+        self.low[u] = self.idx;
+        self.idx += 1;
+        self.stk.push(u);
+        for &v in &self.g[u] {
+            if self.ord[v] == 0 {
+                self.rec(v);
+                self.low[u] = self.low[u].min(self.low[v]);
+            } else {
+                self.low[u] = self.low[u].min(self.ord[v]);
+            }
+        }
+        if self.ord[u] == self.low[u] {
+            let i = self.stk.iter().rposition(|v| *v == u).unwrap();
+            self.comp_id += 1;
+            for v in self.stk.drain(i..) {
+                self.ord[v] = -(self.comp_id as isize) as usize;
+            }
         }
     }
 }

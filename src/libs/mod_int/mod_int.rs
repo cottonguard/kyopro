@@ -61,6 +61,12 @@ impl<M: Modulo> ops::Neg for ModInt<M> {
         Self::new(if self.0 == 0 { 0 } else { M::modulo() - self.0 })
     }
 }
+impl<M: Modulo> ops::Neg for &'_ ModInt<M> {
+    type Output = ModInt<M>;
+    fn neg(self) -> Self::Output {
+        -(*self)
+    }
+}
 impl<M: Modulo> ops::Add for ModInt<M> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -181,6 +187,11 @@ macro_rules! mod_int_from_impl {
     }
 }
 mod_int_from_impl!(isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128);
+impl<M: Modulo> From<bool> for ModInt<M> {
+    fn from(x: bool) -> Self {
+        Self::new(x as u32)
+    }
+}
 impl<M> Copy for ModInt<M> {}
 impl<M> Clone for ModInt<M> {
     fn clone(&self) -> Self {
