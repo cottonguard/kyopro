@@ -1,4 +1,4 @@
-use super::Rng;
+use super::RngCore;
 
 /// <https://xoshiro.di.unimi.it/xoshiro256plusplus.c>
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -13,12 +13,14 @@ impl Xoshiro {
         Self(state)
     }
 }
-impl Rng for Xoshiro {
+impl RngCore for Xoshiro {
     fn next_u32(&mut self) -> u32 {
         (self.next_u64() >> 32) as u32
     }
     fn next_u64(&mut self) -> u64 {
-        let res = (self.0[0] + self.0[3]).rotate_left(23) + self.0[0];
+        let res = (self.0[0].wrapping_add(self.0[3]))
+            .rotate_left(23)
+            .wrapping_add(self.0[0]);
         let t = self.0[1] << 17;
         self.0[2] ^= self.0[0];
         self.0[3] ^= self.0[1];
@@ -37,15 +39,15 @@ impl SplitMix {
         Self(seed)
     }
 }
-impl Rng for SplitMix {
+impl RngCore for SplitMix {
     fn next_u32(&mut self) -> u32 {
         (self.next_u64() >> 32) as u32
     }
     fn next_u64(&mut self) -> u64 {
-        self.0 += 0x9e3779b97f4a7c15;
+        self.0 = self.0.wrapping_add(0x9e3779b97f4a7c15);
         let mut z = self.0;
-        z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
-        z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
         z ^ (z >> 31)
     }
 }

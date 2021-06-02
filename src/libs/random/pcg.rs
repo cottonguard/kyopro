@@ -1,5 +1,6 @@
-use super::Rng;
+use super::RngCore;
 
+/// PCG-XSH-RR
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Pcg(u64);
 const MUL: u64 = 5129263795064623965;
@@ -9,9 +10,8 @@ impl Pcg {
         Self(seed.wrapping_add(INC))
     }
 }
-impl Rng for Pcg {
+impl RngCore for Pcg {
     fn next_u32(&mut self) -> u32 {
-        // PCG-XSH-RR
         let mut x = self.0;
         self.0 = x.wrapping_mul(MUL).wrapping_add(INC);
         x ^= x >> 18;

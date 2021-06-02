@@ -4,10 +4,12 @@ mod xoshiro;
 pub use pcg::Pcg;
 pub use xoshiro::*;
 
-pub trait Rng {
+pub trait RngCore {
     fn next_u32(&mut self) -> u32;
     fn next_u64(&mut self) -> u64;
-    fn gen<T: Uniform>(&mut self) -> T {
+}
+pub trait Rng: RngCore {
+    fn gen<T: Sample>(&mut self) -> T {
         T::sample(self)
     }
     fn range<T: Uniform>(&mut self, l: T, r: T) -> T {
@@ -21,6 +23,9 @@ pub trait Rng {
             return true;
         }
         self.next_u64() < (2.0f64.powi(64) * p) as u64
+    }
+    fn open01<T: SampleFloat>(&mut self) -> T {
+        T::open01(self)
     }
     fn standard_normal<T: SampleFloat>(&mut self) -> T {
         T::standard_normal(self)
@@ -50,19 +55,23 @@ pub trait Rng {
         &mut a[self.range(0, a.len())]
     }
 }
-pub trait Uniform {
+impl<T: RngCore> Rng for T {}
+pub trait Sample {
     fn sample<T: Rng + ?Sized>(rand: &mut T) -> Self;
+}
+pub trait Uniform {
     fn range<T: Rng + ?Sized>(rand: &mut T, l: Self, r: Self) -> Self;
     fn range_inclusive<T: Rng + ?Sized>(rand: &mut T, l: Self, r: Self) -> Self;
 }
 pub trait SampleFloat {
+    fn open01<T: Rng + ?Sized>(rand: &mut T) -> Self;
     fn standard_normal<T: Rng + ?Sized>(rand: &mut T) -> Self;
     fn normal<T: Rng + ?Sized>(rand: &mut T, mean: Self, sd: Self) -> Self;
     fn exp<T: Rng + ?Sized>(rand: &mut T, lambda: Self) -> Self;
 }
 macro_rules! int_impl {
     ($($type:ident),*) => {$(
-        impl Uniform for $type {
+        impl Sample for $type {
             fn sample<T: Rng + ?Sized>(rand: &mut T) -> Self {
                 if 8 * std::mem::size_of::<Self>() <= 32 {
                     rand.next_u32() as $type
@@ -70,6 +79,8 @@ macro_rules! int_impl {
                     rand.next_u64() as $type
                 }
             }
+        }
+        impl Uniform for $type {
             fn range<T: Rng + ?Sized>(rand: &mut T, l: Self, r: Self) -> Self {
                 assert!(l < r);
                 Self::range_inclusive(rand, l, r - 1)
@@ -101,24 +112,33 @@ macro_rules! int_impl {
 }
 int_impl!(i8, u8, i16, u16, i32, u32, i64, u64, isize, usize);
 macro_rules! float_impl {
-    ($($fty:ident, $uty:ident, $fract:expr);*) => {$(
-        impl Uniform for $fty {
+    ($($fty:ident, $uty:ident, $fract:expr, $exp_bias:expr);*) => {$(
+        impl Sample for $fty {
             fn sample<T: Rng + ?Sized>(rand: &mut T) -> Self {
                 let x: $uty = rand.gen();
                 let bits = 8 * std::mem::size_of::<$fty>();
                 let prec = $fract + 1;
-                (x >> (bits - prec)) as $fty / ((1 as $uty) << prec) as $fty
+                let scale = 1. / ((1 as $uty) << prec) as $fty;
+                scale * (x >> (bits - prec)) as $fty
             }
+        }
+        impl Uniform for $fty {
             fn range<T: Rng + ?Sized>(rand: &mut T, l: Self, r: Self) -> Self {
                 assert!(l <= r);
                 l + Self::sample(rand) / (r - l)
             }
             fn range_inclusive<T: Rng + ?Sized>(rand: &mut T, l: Self, r: Self) -> Self {
                 assert!(l <= r);
-                Self::range(rand, l, r + std::$fty::EPSILON)
+                Self::range(rand, l, r)
             }
         }
         impl SampleFloat for $fty {
+            fn open01<T: Rng + ?Sized>(rand: &mut T) -> Self {
+                let x: $uty = rand.gen();
+                let bits = 8 * std::mem::size_of::<$fty>();
+                let exp = $exp_bias << $fract;
+                $fty::from_bits(exp | (x >> (bits - $fract))) - (1. - std::$fty::EPSILON / 2.)
+            }
             fn standard_normal<T: Rng + ?Sized>(rand: &mut T) -> Self {
                 Self::exp(0.5).sqrt() * (2. * std::$fty::consts::PI * Self::sample(rand)).cos()
             }
@@ -131,39 +151,87 @@ macro_rules! float_impl {
         }
     )*}
 }
-float_impl!(f32, u32, 23; f64, u64, 52);
+float_impl!(f32, u32, 23, 127; f64, u64, 52, 1023);
+impl Sample for bool {
+    fn sample<T: Rng + ?Sized>(rand: &mut T) -> Self {
+        (rand.next_u32() as i32) >= 0
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    macro_rules! float_test {
+        ($ty:ident, $method:ident, $lo:expr, $hi:expr, $min:expr, $max:expr, $mean:expr) => {{
+            let mut rand = Xoshiro::seed_from_u64(0);
+            let mut min = $ty::INFINITY;
+            let mut max = -$ty::INFINITY;
+            let mut sum = 0.;
+            for _ in 0..1000 {
+                let x: $ty = rand.$method();
+                min = min.min(x);
+                max = max.max(x);
+                sum += x;
+                assert!($lo(x));
+                assert!($hi(x));
+            }
+            assert!($min(min));
+            assert!($max(max));
+            let mean = sum / 1000.;
+            assert!($mean(mean));
+        }};
+    }
+
     #[test]
     fn random_test() {
         let mut rand = Pcg::seed_from_u64(0);
 
-        let mut min = f32::INFINITY;
-        let mut max = -f32::INFINITY;
-        for _ in 0..1000 {
-            let x: f32 = rand.gen();
-            min = min.min(x);
-            max = max.max(x);
-            assert!(0. <= x);
-            assert!(x < 1.);
-        }
-        assert!(min < 0.05);
-        assert!(max > 0.95);
-
-        let mut min = f64::INFINITY;
-        let mut max = -f64::INFINITY;
-        for _ in 0..1000 {
-            let x: f64 = rand.gen();
-            min = min.min(x);
-            max = max.max(x);
-            assert!(0. <= x);
-            assert!(x < 1.);
-        }
-        assert!(min < 0.05);
-        assert!(max > 0.95);
+        float_test!(
+            f32,
+            gen,
+            |x| 0. <= x,
+            |x| x < 1.,
+            |x| x < 0.05,
+            |x| 0.95 < x,
+            |x| 0.45 < x && x < 0.55
+        );
+        float_test!(
+            f64,
+            gen,
+            |x| 0. <= x,
+            |x| x < 1.,
+            |x| x < 0.05,
+            |x| 0.95 < x,
+            |x| 0.45 < x && x < 0.55
+        );
+        float_test!(
+            f32,
+            open01,
+            |x| 0. < x,
+            |x| x < 1.,
+            |x| x < 0.05,
+            |x| 0.95 < x,
+            |x| 0.45 < x && x < 0.55
+        );
+        float_test!(
+            f64,
+            open01,
+            |x| 0. < x,
+            |x| x < 1.,
+            |x| x < 0.05,
+            |x| 0.95 < x,
+            |x| 0.45 < x && x < 0.55
+        );
+        float_test!(
+            f64,
+            standard_normal,
+            |_| true,
+            |_| true,
+            |_| true,
+            |_| true,
+            |x| -0.05 < x && x < 0.05
+        );
 
         for &(d, u) in &[
             (0, 1),
